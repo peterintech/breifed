@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/peterintech/rssagg/internal/auth"
 	"github.com/peterintech/rssagg/internal/database"
 )
 
@@ -32,6 +33,20 @@ func (ac *apiConfig) createUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		errorResponse(w, 500, fmt.Sprint("Error creating user:", err))
+		return
+	}
+
+	jsonResponse(w, 201, databaseUserToUser(user))
+}
+func (ac *apiConfig) getUserByApiKey(w http.ResponseWriter, r *http.Request) {
+	apikey, err := auth.GetApiKey(r.Header)
+	if err != nil {
+		errorResponse(w, 403, fmt.Sprint("Auth error:", err))
+		return
+	}
+	user, err := ac.DB.GetUserByApiKey(r.Context(), apikey)
+	if err != nil {
+		errorResponse(w, 400, fmt.Sprint("User not found:", err))
 		return
 	}
 
