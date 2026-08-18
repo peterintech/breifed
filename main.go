@@ -20,12 +20,6 @@ type apiConfig struct {
 }
 
 func main() {
-	feed, err := urlToFeed("https://wagslane.dev/index.xml")
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println(feed)
-
 	godotenv.Load(".env")
 
 	portStr := os.Getenv("PORT")
@@ -48,8 +42,6 @@ func main() {
 	}
 
 	defer conn.Close()
-
-	go startScraping(db, 10, time.Minute)
 
 	router := chi.NewRouter()
 
@@ -74,15 +66,21 @@ func main() {
 	v1Router.Post("/feeds", api.authMiddleware(api.createFeedHandler))
 	v1Router.Get("/feeds", api.authMiddleware(api.getFeedsHandler))
 	v1Router.Get("/feeds/{feedId}", api.authMiddleware(api.getFeedByIdHandler))
+	v1Router.Delete("/feeds/{feedId}", api.authMiddleware(api.deleteFeedHandler))
 
 	v1Router.Post("/feed_follows", api.authMiddleware(api.createFeedFollowHandler))
 	v1Router.Get("/feed_follows", api.authMiddleware(api.getFeedFollowsHandler))
 	v1Router.Delete("/feed_follows/{feedFollowID}", api.authMiddleware(api.deleteFeedFollowHandler))
 
+	v1Router.Get("/posts", api.authMiddleware(api.getPostsForUserHandler))
+
 	srv := &http.Server{
 		Handler: router,
 		Addr:    fmt.Sprintf(":%s", portStr),
 	}
+	const collectionConcurrency = 10
+	const collectionInterval = time.Minute
+	go startScraping(db, collectionConcurrency, collectionInterval)
 
 	log.Printf("Server is running on port %s", portStr)
 	log.Fatal(srv.ListenAndServe())

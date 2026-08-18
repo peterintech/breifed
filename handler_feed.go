@@ -78,3 +78,28 @@ func (ac *apiConfig) getFeedByIdHandler(w http.ResponseWriter, r *http.Request, 
 
 	jsonResponse(w, 200, databaseGetFeedByIdRowToFeed(feed))
 }
+
+func (ac *apiConfig) deleteFeedHandler(w http.ResponseWriter, r *http.Request, user database.User) {
+	feedId := chi.URLParam(r, "feedId")
+	if feedId == "" {
+		errorResponse(w, 400, "Missing feed ID")
+		return
+	}
+
+	feedUUID, err := uuid.Parse(feedId)
+	if err != nil {
+		errorResponse(w, 400, fmt.Sprint("Invalid feed ID:", err))
+		return
+	}
+
+	err = ac.DB.DeleteFeed(r.Context(), database.DeleteFeedParams{
+		ID:     feedUUID,
+		UserID: user.ID,
+	})
+	if err != nil {
+		errorResponse(w, 500, fmt.Sprint("Error deleting feed:", err))
+		return
+	}
+
+	jsonResponse(w, 200, map[string]string{"message": "Feed deleted successfully"})
+}

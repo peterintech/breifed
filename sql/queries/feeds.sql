@@ -16,3 +16,6 @@ SELECT id, created_at, updated_at, name, url, user_id FROM feeds ORDER BY last_f
 -- name: MarkFeedAsFetched :one
 UPDATE feeds
 SET last_fetched_at = NOW(), updated_at = NOW() WHERE id = $1 RETURNING *;
+
+-- name: DeleteFeed :exec
+DELETE FROM feeds WHERE id = $1 AND user_id = $2;
