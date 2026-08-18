@@ -9,6 +9,7 @@ import (
 func errorResponse(w http.ResponseWriter, status int, message string) {
 	if status > 499 {
 		http.Error(w, message, status)
+		return
 	}
 	type errorResponse struct {
 		Error string `json:"error"`

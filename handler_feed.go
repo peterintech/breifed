@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-chi/chi"
 	"github.com/google/uuid"
 
 	"github.com/peterintech/rssagg/internal/database"
@@ -38,7 +39,7 @@ func (ac *apiConfig) createFeedHandler(w http.ResponseWriter, r *http.Request, u
 		return
 	}
 
-	jsonResponse(w, 201, databaseFeedToFeed(feed))
+	jsonResponse(w, 201, databaseCreateFeedRowToFeed(feed))
 }
 
 func (ac *apiConfig) getFeedsHandler(w http.ResponseWriter, r *http.Request, user database.User) {
@@ -48,11 +49,11 @@ func (ac *apiConfig) getFeedsHandler(w http.ResponseWriter, r *http.Request, use
 		return
 	}
 
-	jsonResponse(w, 200, databaseFeedToFeeds(feeds))
+	jsonResponse(w, 200, databaseGetFeedsByUserIdRowToFeeds(feeds))
 }
 
 func (ac *apiConfig) getFeedByIdHandler(w http.ResponseWriter, r *http.Request, user database.User) {
-	feedId := r.URL.Query().Get("id")
+	feedId := chi.URLParam(r, "feedId")
 	if feedId == "" {
 		errorResponse(w, 400, "Missing feed ID")
 		return
@@ -75,5 +76,5 @@ func (ac *apiConfig) getFeedByIdHandler(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	jsonResponse(w, 200, databaseFeedToFeed(feed))
+	jsonResponse(w, 200, databaseGetFeedByIdRowToFeed(feed))
 }
