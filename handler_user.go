@@ -40,3 +40,20 @@ func (ac *apiConfig) createUserHandler(w http.ResponseWriter, r *http.Request) {
 func (ac *apiConfig) getUserByApiKey(w http.ResponseWriter, r *http.Request, user database.User) {
 	jsonResponse(w, 200, databaseUserToUser(user))
 }
+
+func (ac *apiConfig) getPostsForUserHandler(w http.ResponseWriter, r *http.Request, user database.User) {
+	limit := int32(10)
+	offset := int32(0)
+
+	posts, err := ac.DB.GetPostsForUser(r.Context(), database.GetPostsForUserParams{
+		UserID: user.ID,
+		Limit:  limit,
+		Offset: offset,
+	})
+	if err != nil {
+		errorResponse(w, 500, fmt.Sprint("Error fetching posts:", err))
+		return
+	}
+
+	jsonResponse(w, 200, databasePostsToPosts(posts))
+}
