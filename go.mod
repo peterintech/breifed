@@ -1,4 +1,4 @@
-module github.com/peterintech/rssagg
+module github.com/peterintech/briefed
 
 go 1.26.4
 

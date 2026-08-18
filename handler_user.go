@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/peterintech/rssagg/internal/database"
+	"github.com/peterintech/briefed/internal/database"
 )
 
 func (ac *apiConfig) createUserHandler(w http.ResponseWriter, r *http.Request) {

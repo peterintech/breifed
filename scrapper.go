@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/peterintech/rssagg/internal/database"
+	"github.com/peterintech/briefed/internal/database"
 )
 
 type RSSFeed struct {
@@ -37,25 +37,26 @@ func startScraping(db *database.Queries, concurrency int, timeBetweenRequest tim
 	log.Printf("Collecting feeds every %s on %v goroutines...", timeBetweenRequest, concurrency)
 	ticker := time.NewTicker(timeBetweenRequest)
 
-	for ; ; <-ticker.C {
+	for {
 		feeds, err := db.GetNextFeedsToFetch(context.Background(), int32(concurrency))
 		if err != nil {
 			log.Println("Couldn't get next feeds to fetch", err)
 			continue
 		}
-		log.Printf("Found %v feeds to fetch!", len(feeds))
 
 		wg := &sync.WaitGroup{}
 		for _, feed := range feeds {
-			wg.Add(1)
-			go scrapeFeed(db, wg, feed)
+			wg.Go(func() {
+				go scrapeFeed(db, wg, feed)
+			})
 		}
 		wg.Wait()
+
+		<-ticker.C
 	}
 }
 
 func scrapeFeed(db *database.Queries, wg *sync.WaitGroup, feed database.GetNextFeedsToFetchRow) {
-	defer wg.Done()
 	_, err := db.MarkFeedAsFetched(context.Background(), feed.ID)
 	if err != nil {
 		log.Printf("Couldn't mark feed %s fetched: %v", feed.Name, err)

@@ -9,7 +9,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/google/uuid"
 
-	"github.com/peterintech/rssagg/internal/database"
+	"github.com/peterintech/briefed/internal/database"
 )
 
 func (ac *apiConfig) createFeedFollowHandler(w http.ResponseWriter, r *http.Request, user database.User) {

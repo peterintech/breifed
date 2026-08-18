@@ -12,7 +12,7 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
-	"github.com/peterintech/rssagg/internal/database"
+	"github.com/peterintech/briefed/internal/database"
 )
 
 type apiConfig struct {
