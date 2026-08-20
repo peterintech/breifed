@@ -1,4 +1,4 @@
-package main
+package scrapper
 
 import (
 	"context"
@@ -33,7 +33,7 @@ type RSSItem struct {
 	PubDate     string `xml:"pubDate"`
 }
 
-func startScraping(db *database.Queries, concurrency int, timeBetweenRequest time.Duration) {
+func Start(db *database.Queries, concurrency int, timeBetweenRequest time.Duration) {
 	log.Printf("Collecting feeds every %s on %v goroutines...", timeBetweenRequest, concurrency)
 	ticker := time.NewTicker(timeBetweenRequest)
 
@@ -47,7 +47,7 @@ func startScraping(db *database.Queries, concurrency int, timeBetweenRequest tim
 		wg := &sync.WaitGroup{}
 		for _, feed := range feeds {
 			wg.Go(func() {
-				go scrapeFeed(db, wg, feed)
+				scrapeFeed(db, feed)
 			})
 		}
 		wg.Wait()
@@ -56,7 +56,7 @@ func startScraping(db *database.Queries, concurrency int, timeBetweenRequest tim
 	}
 }
 
-func scrapeFeed(db *database.Queries, wg *sync.WaitGroup, feed database.GetNextFeedsToFetchRow) {
+func scrapeFeed(db *database.Queries, feed database.GetNextFeedsToFetchRow) {
 	_, err := db.MarkFeedAsFetched(context.Background(), feed.ID)
 	if err != nil {
 		log.Printf("Couldn't mark feed %s fetched: %v", feed.Name, err)
