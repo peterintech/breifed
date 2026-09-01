@@ -280,13 +280,13 @@ The background scraper runs in a separate goroutine and fetches RSS feeds on a c
 
 ### Relationship Summary
 
-| Relationship | Type | FK | On Delete |
-|---|---|---|---|
-| users → feeds | One-to-Many | `feeds.user_id → users.id` | CASCADE |
-| users → feed_follows | One-to-Many | `feed_follows.user_id → users.id` | CASCADE |
-| feeds → feed_follows | One-to-Many | `feed_follows.feed_id → feeds.id` | CASCADE |
-| feeds → posts | One-to-Many | `posts.feed_id → feeds.id` | CASCADE |
-| users ↔ feeds | Many-to-Many | via `feed_follows` junction table | — |
+| Relationship         | Type         | FK                                | On Delete |
+| -------------------- | ------------ | --------------------------------- | --------- |
+| users → feeds        | One-to-Many  | `feeds.user_id → users.id`        | CASCADE   |
+| users → feed_follows | One-to-Many  | `feed_follows.user_id → users.id` | CASCADE   |
+| feeds → feed_follows | One-to-Many  | `feed_follows.feed_id → feeds.id` | CASCADE   |
+| feeds → posts        | One-to-Many  | `posts.feed_id → feeds.id`        | CASCADE   |
+| users ↔ feeds        | Many-to-Many | via `feed_follows` junction table | —         |
 
 All foreign keys use `ON DELETE CASCADE`. Deleting a user removes all their feeds, follows, and (transitively) posts. Deleting a feed removes all its follows and posts.
 
@@ -369,29 +369,29 @@ This separation keeps sqlc-generated code untouched while giving full control ov
 
 ## API Endpoints
 
-| Method | Path | Auth | Handler | Description |
-|---|---|---|---|---|
-| GET | `/v1/health` | No | `readinessHandler` | Liveness probe |
-| GET | `/v1/err` | No | `errorHandler` | Test error handling |
-| POST | `/v1/users` | No | `createUserHandler` | Register new user |
-| GET | `/v1/users` | Yes | `getUserByApiKey` | Get current user profile |
-| POST | `/v1/feeds` | Yes | `createFeedHandler` | Create a new feed subscription |
-| GET | `/v1/feeds` | Yes | `getFeedsHandler` | List user's feeds |
-| GET | `/v1/feeds/{feedId}` | Yes | `getFeedByIdHandler` | Get a specific feed |
-| DELETE | `/v1/feeds/{feedId}` | Yes | `deleteFeedHandler` | Delete a feed |
-| POST | `/v1/feed_follows` | Yes | `createFeedFollowHandler` | Follow a feed |
-| GET | `/v1/feed_follows` | Yes | `getFeedFollowsHandler` | List followed feeds |
-| DELETE | `/v1/feed_follows/{feedFollowID}` | Yes | `deleteFeedFollowHandler` | Unfollow a feed |
-| GET | `/v1/posts` | Yes | `getPostsForUserHandler` | Get posts from followed feeds |
+| Method | Path                              | Auth | Handler                   | Description                    |
+| ------ | --------------------------------- | ---- | ------------------------- | ------------------------------ |
+| GET    | `/v1/health`                      | No   | `readinessHandler`        | Liveness probe                 |
+| GET    | `/v1/err`                         | No   | `errorHandler`            | Test error handling            |
+| POST   | `/v1/users`                       | No   | `createUserHandler`       | Register new user              |
+| GET    | `/v1/users`                       | Yes  | `getUserByApiKey`         | Get current user profile       |
+| POST   | `/v1/feeds`                       | Yes  | `createFeedHandler`       | Create a new feed subscription |
+| GET    | `/v1/feeds`                       | Yes  | `getFeedsHandler`         | List user's feeds              |
+| GET    | `/v1/feeds/{feedId}`              | Yes  | `getFeedByIdHandler`      | Get a specific feed            |
+| DELETE | `/v1/feeds/{feedId}`              | Yes  | `deleteFeedHandler`       | Delete a feed                  |
+| POST   | `/v1/feed_follows`                | Yes  | `createFeedFollowHandler` | Follow a feed                  |
+| GET    | `/v1/feed_follows`                | Yes  | `getFeedFollowsHandler`   | List followed feeds            |
+| DELETE | `/v1/feed_follows/{feedFollowID}` | Yes  | `deleteFeedFollowHandler` | Unfollow a feed                |
+| GET    | `/v1/posts`                       | Yes  | `getPostsForUserHandler`  | Get posts from followed feeds  |
 
 ## Dependencies
 
-| Package | Purpose |
-|---|---|
-| `github.com/go-chi/chi` | HTTP router |
-| `github.com/go-chi/cors` | CORS middleware |
-| `github.com/lib/pq` | PostgreSQL driver |
-| `github.com/google/uuid` | UUID generation |
-| `github.com/joho/godotenv` | .env file loading |
-| `github.com/pressly/goose` | Database migrations |
+| Package                    | Purpose                   |
+| -------------------------- | ------------------------- |
+| `github.com/go-chi/chi`    | HTTP router               |
+| `github.com/go-chi/cors`   | CORS middleware           |
+| `github.com/lib/pq`        | PostgreSQL driver         |
+| `github.com/google/uuid`   | UUID generation           |
+| `github.com/joho/godotenv` | .env file loading         |
+| `github.com/pressly/goose` | Database migrations       |
 | `github.com/sqlc-dev/sqlc` | SQL-to-Go code generation |

@@ -13,10 +13,10 @@ import (
 	"github.com/google/uuid"
 )
 
-const createPost = `-- name: CreatePost :one
+const createPost = `-- name: CreatePost :exec
 INSERT INTO posts (id, created_at, updated_at, title, description, published_at, url, feed_id)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, created_at, updated_at, title, description, published_at, url, feed_id
+ON CONFLICT (url) DO NOTHING
 `
 
 type CreatePostParams struct {
@@ -30,8 +30,8 @@ type CreatePostParams struct {
 	FeedID      uuid.UUID
 }
 
-func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, error) {
-	row := q.db.QueryRowContext(ctx, createPost,
+func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) error {
+	_, err := q.db.ExecContext(ctx, createPost,
 		arg.ID,
 		arg.CreatedAt,
 		arg.UpdatedAt,
@@ -41,25 +41,22 @@ func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, e
 		arg.Url,
 		arg.FeedID,
 	)
-	var i Post
-	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.Title,
-		&i.Description,
-		&i.PublishedAt,
-		&i.Url,
-		&i.FeedID,
-	)
-	return i, err
+	return err
 }
 
 const getPostsForUser = `-- name: GetPostsForUser :many
-SELECT p.id, p.created_at, p.updated_at, p.title, p.description, p.published_at, p.url, p.feed_id
+SELECT
+    p.id,
+    p.created_at,
+    p.updated_at,
+    p.title,
+    p.description,
+    p.published_at,
+    p.url,
+    p.feed_id
 FROM posts p
-JOIN feeds f ON p.feed_id = f.id
-WHERE f.user_id = $1
+JOIN feed_follows ff ON ff.feed_id = p.feed_id
+WHERE ff.user_id = $1
 ORDER BY p.published_at DESC
 LIMIT $2 OFFSET $3
 `

@@ -11,22 +11,32 @@ import (
 	"github.com/google/uuid"
 )
 
+type Category struct {
+	ID        uuid.UUID
+	Name      string
+	Slug      string
+	CreatedAt time.Time
+}
+
 type Feed struct {
 	ID            uuid.UUID
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	Name          string
 	Url           string
-	UserID        uuid.UUID
+	SubmittedBy   uuid.NullUUID
 	LastFetchedAt sql.NullTime
 }
 
+type FeedCategory struct {
+	FeedID     uuid.UUID
+	CategoryID uuid.UUID
+}
+
 type FeedFollow struct {
-	ID        uuid.UUID
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	FeedID    uuid.UUID
 	UserID    uuid.UUID
+	FeedID    uuid.UUID
+	CreatedAt time.Time
 }
 
 type Post struct {
@@ -40,10 +50,24 @@ type Post struct {
 	FeedID      uuid.UUID
 }
 
-type User struct {
+type Session struct {
 	ID        uuid.UUID
+	UserID    uuid.UUID
+	Token     string
 	CreatedAt time.Time
-	UpdatedAt time.Time
-	Name      string
-	ApiKey    string
+	ExpiresAt time.Time
+}
+
+type User struct {
+	ID           uuid.UUID
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	Name         string
+	Email        string
+	PasswordHash string
+}
+
+type UserCategory struct {
+	UserID     uuid.UUID
+	CategoryID uuid.UUID
 }
