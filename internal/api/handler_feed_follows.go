@@ -1,70 +1,57 @@
 package api
 
 import (
-	"encoding/json"
-	"fmt"
+	"database/sql"
 	"net/http"
-	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/google/uuid"
-
 	"github.com/peterintech/briefed/internal/database"
 )
 
-func (ac *apiConfig) createFeedFollowHandler(w http.ResponseWriter, r *http.Request, user database.User) {
-	type parameters struct {
-		FeedID uuid.UUID `json:"feed_id"`
-	}
-
-	decoder := json.NewDecoder(r.Body)
-	params := parameters{}
-	if err := decoder.Decode(&params); err != nil {
-		errorResponse(w, 400, fmt.Sprint("Error parsing JSON:", err))
-		return
-	}
-
-	feedFollow, err := ac.DB.CreateFeedFollow(r.Context(), database.CreateFeedFollowParams{
-		ID:        uuid.New(),
-		CreatedAt: time.Now().UTC(),
-		UpdatedAt: time.Now().UTC(),
-		FeedID:    params.FeedID,
-		UserID:    user.ID,
-	})
-
+func (ac *apiConfig) getFollowedFeedsHandler(w http.ResponseWriter, r *http.Request, user database.User) {
+	feeds, err := ac.DB.GetFeedsForUser(r.Context(), user.ID)
 	if err != nil {
-		errorResponse(w, 500, fmt.Sprint("Error creating feed follow:", err))
+		errorResponse(w, http.StatusInternalServerError, "could not fetch followed feeds")
 		return
 	}
-
-	jsonResponse(w, 201, databaseFeedFollowToFeedFollow(feedFollow))
+	response, err := ac.feedResponses(r.Context(), feeds)
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, "could not fetch feed categories")
+		return
+	}
+	jsonResponse(w, http.StatusOK, response)
 }
 
-func (ac *apiConfig) getFeedFollowsHandler(w http.ResponseWriter, r *http.Request, user database.User) {
-	feedFollows, err := ac.DB.GetFeedFollows(r.Context(), user.ID)
+func (ac *apiConfig) followFeedHandler(w http.ResponseWriter, r *http.Request, user database.User) {
+	feedID, err := uuid.Parse(chi.URLParam(r, "feedID"))
 	if err != nil {
-		errorResponse(w, 400, fmt.Sprint("Error fetching feed follows:", err))
+		errorResponse(w, http.StatusBadRequest, "invalid feed ID")
 		return
 	}
-
-	jsonResponse(w, 200, databaseFeedFollowsToFeedFollows(feedFollows))
+	feed, err := ac.DB.GetFeedByID(r.Context(), feedID)
+	if err == sql.ErrNoRows {
+		errorResponse(w, http.StatusNotFound, "feed not found")
+		return
+	}
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, "could not fetch feed")
+		return
+	}
+	ac.followAndRespond(w, r, user, feed, http.StatusOK)
 }
 
-func (ac *apiConfig) deleteFeedFollowHandler(w http.ResponseWriter, r *http.Request, user database.User) {
-	feedFollowIDStr := chi.URLParam(r, "feedFollowID")
-	feedFollowID, err := uuid.Parse(feedFollowIDStr)
+func (ac *apiConfig) unfollowFeedHandler(w http.ResponseWriter, r *http.Request, user database.User) {
+	feedID, err := uuid.Parse(chi.URLParam(r, "feedID"))
 	if err != nil {
-		errorResponse(w, 400, fmt.Sprintf("couldn't parse feed follow id: %v", err))
+		errorResponse(w, http.StatusBadRequest, "invalid feed ID")
 		return
 	}
-
-	err = ac.DB.DeleteFeedFollow(r.Context(), database.DeleteFeedFollowParams{
-		ID:     feedFollowID,
-		UserID: user.ID,
-	})
-	if err != nil {
-		errorResponse(w, 500, fmt.Sprintf("Error deleting feed follow: %v", err))
+	if err := ac.DB.DeleteFeedFollow(r.Context(), database.DeleteFeedFollowParams{
+		UserID: user.ID, FeedID: feedID,
+	}); err != nil {
+		errorResponse(w, http.StatusInternalServerError, "could not unfollow feed")
 		return
 	}
-	jsonResponse(w, 200, map[string]string{"message": "Feed follow deleted successfully"})
+	w.WriteHeader(http.StatusNoContent)
 }
