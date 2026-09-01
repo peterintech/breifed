@@ -1,6 +1,9 @@
 package feedparser
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestParseRSS(t *testing.T) {
 	data := []byte(`<?xml version="1.0"?>
@@ -37,6 +40,28 @@ func TestParseAtom(t *testing.T) {
 	}
 	if feed.Items[0].URL != "https://example.com/first" || feed.Items[0].PublishedAt.IsZero() {
 		t.Fatalf("unexpected item: %#v", feed.Items[0])
+	}
+}
+
+func TestParseRSSDateWithSingleDigitDay(t *testing.T) {
+	tests := []struct {
+		name string
+		date string
+	}{
+		{name: "numeric timezone", date: "Tue, 1 Sep 2026 05:24:02 +0000"},
+		{name: "named timezone", date: "Tue, 1 Sep 2026 00:38:25 EST"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parsed := parseDate(tt.date)
+			if parsed.IsZero() {
+				t.Fatalf("expected %q to parse", tt.date)
+			}
+			if parsed.Day() != 1 || parsed.Month() != time.September || parsed.Year() != 2026 {
+				t.Fatalf("unexpected parsed date: %s", parsed)
+			}
+		})
 	}
 }
 

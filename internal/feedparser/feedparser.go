@@ -159,6 +159,7 @@ func parseDate(value string) time.Time {
 	value = strings.TrimSpace(value)
 	layouts := []string{
 		time.RFC3339, time.RFC3339Nano, time.RFC1123Z, time.RFC1123,
+		"Mon, 2 Jan 2006 15:04:05 -0700", "Mon, 2 Jan 2006 15:04:05 MST",
 		time.RFC822Z, time.RFC822, time.RFC850, time.ANSIC,
 	}
 	for _, layout := range layouts {
