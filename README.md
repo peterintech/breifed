@@ -1,190 +1,130 @@
 # Briefed
 
-**Your personal RSS feed aggregator.** Subscribe to the blogs and news sources you care about, and read all their articles in one place.
+Briefed is a small RSS/Atom aggregator that gives each user a personalized, newest-first news feed.
 
----
+Users choose interests, discover available feeds in those categories, and explicitly follow the sources they want. Every feed is shared: a feed contributed by one user can be followed by everyone.
 
-## What is Briefed?
+## Stack
 
-Every day, interesting articles are published across hundreds of blogs and news sites. Instead of visiting each one individually, Briefed collects them for you automatically.
+- Go and Chi
+- PostgreSQL
+- sqlc for generated database access
+- goose for migrations
+- Cookie sessions with bcrypt passwords
+- templ and HTMX will be added after the backend
 
-**How it works:**
-1. You sign up and get a personal API key
-2. You tell Briefed which RSS feeds to follow
-3. Briefed checks those feeds every minute and saves new articles
-4. You ask Briefed for your articles and get everything in one response
+## Setup
 
-**Think of it as your own personal news desk** -- it reads the internet for you and hands you a summary whenever you ask.
+Requirements:
 
----
-
-## Quick Start
-
-### Prerequisites
-
-- Go 1.22 or later
-- PostgreSQL 12 or later
-- [goose](https://github.com/pressly/goose) for database migrations
-
-### 1. Clone and configure
-
-```bash
-git clone https://github.com/peterintech/briefed.git
-cd briefed
-```
+- Go 1.26 or later
+- PostgreSQL
+- goose
+- sqlc
 
 Create a `.env` file:
 
-```
+```env
 PORT=8080
 DB_URL=postgresql://username:password@localhost:5432/briefed?sslmode=disable
 ```
 
-### 2. Set up the database
+Create a new database, run the migrations, and generate the database package:
 
 ```bash
-createdb briefed
-goose -dir sql/schema postgres "postgresql://username:password@localhost:5432/briefed?sslmode=disable" up
-```
-
-### 3. Run the server
-
-```bash
+goose -dir sql/schema postgres "$DB_URL" up
+sqlc generate
 go run .
 ```
 
-The server starts on `http://localhost:8080`.
+## Main flow
 
----
+1. Load categories with `GET /v1/categories`.
+2. Find feeds using `GET /v1/feeds?category_ids=...`.
+3. Register with the selected category and feed IDs.
+4. The server creates an HTTP-only session cookie.
+5. Load personalized articles with `GET /v1/posts`.
+6. Follow existing feeds or contribute a new RSS/Atom URL.
 
-## API Usage
+The browser must send the session cookie for authenticated endpoints.
 
-### Create an account
+## API
 
-```bash
-curl -X POST http://localhost:8080/v1/users \
-  -H "Content-Type: application/json" \
-  -d '{"name": "your-name"}'
-```
-
-Response:
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "name": "your-name",
-  "api_key": "a1b2c3d4e5f6..."
-}
-```
-
-Save the `api_key` -- you'll need it for everything else.
-
-### Add an RSS feed
+### Register
 
 ```bash
-curl -X POST http://localhost:8080/v1/feeds \
-  -H "Content-Type: application/json" \
-  -H "Authorization: ApiKey YOUR_API_KEY" \
-  -d '{"name": "Hacker News", "url": "https://hnrss.org/frontpage"}'
+curl -c cookies.txt -X POST http://localhost:8080/v1/auth/register   -H "Content-Type: application/json"   -d '{
+    "name": "Peter",
+    "email": "peter@example.com",
+    "password": "password123",
+    "category_ids": [],
+    "feed_ids": []
+  }'
 ```
 
-### See all available feeds
+### Login and logout
 
 ```bash
-curl http://localhost:8080/v1/feeds \
-  -H "Authorization: ApiKey YOUR_API_KEY"
+curl -c cookies.txt -X POST http://localhost:8080/v1/auth/login   -H "Content-Type: application/json"   -d '{"email":"peter@example.com","password":"password123"}'
+
+curl -b cookies.txt -X POST http://localhost:8080/v1/auth/logout
 ```
 
-### Follow a feed
+### Discover feeds
 
 ```bash
-curl -X POST http://localhost:8080/v1/feed_follows \
-  -H "Content-Type: application/json" \
-  -H "Authorization: ApiKey YOUR_API_KEY" \
-  -d '{"feed_id": "feed-uuid-here"}'
+curl "http://localhost:8080/v1/feeds?category_ids=CATEGORY_UUID&q=tech&limit=20&offset=0"
 ```
 
-### Read your articles
+Multiple category IDs are comma-separated and use OR matching.
+
+### Follow or unfollow
 
 ```bash
-curl http://localhost:8080/v1/posts \
-  -H "Authorization: ApiKey YOUR_API_KEY"
+curl -b cookies.txt -X POST http://localhost:8080/v1/me/feeds/FEED_UUID
+curl -b cookies.txt -X DELETE http://localhost:8080/v1/me/feeds/FEED_UUID
 ```
 
-Response:
-```json
-[
-  {
-    "id": "...",
-    "title": "Show HN: A new way to do X",
-    "description": "I built a tool that...",
-    "url": "https://example.com/article",
-    "published_at": "2025-01-15T10:30:00Z",
-    "feed_id": "..."
-  }
-]
+### Contribute a feed
+
+```bash
+curl -b cookies.txt -X POST http://localhost:8080/v1/feeds   -H "Content-Type: application/json"   -d '{
+    "url": "https://example.com/feed.xml",
+    "category_ids": ["CATEGORY_UUID"]
+  }'
 ```
 
-### Other endpoints
+The URL is parsed before insertion. The feed title is extracted from the RSS/Atom document, the feed becomes globally available, and the submitter follows it automatically.
 
-| Action | Method | Endpoint |
-|---|---|---|
-| Check server health | GET | `/v1/health` |
-| Get your profile | GET | `/v1/users` |
-| Get a specific feed | GET | `/v1/feeds/{feedId}` |
-| Delete a feed | DELETE | `/v1/feeds/{feedId}` |
-| List your followed feeds | GET | `/v1/feed_follows` |
-| Unfollow a feed | DELETE | `/v1/feed_follows/{feedFollowID}` |
+### Personalized posts
 
----
-
-## How It Works (for developers)
-
-Briefed is a Go backend with three core components:
-
-### REST API
-A `chi`-based HTTP server with API key authentication. All authenticated endpoints use a middleware that extracts the API key from the `Authorization` header and resolves the user from the database.
-
-### Background Scraper
-A goroutine that runs on a 60-second ticker. It picks the 10 feeds that haven't been fetched most recently, fetches them concurrently (up to 10 goroutines), parses the RSS XML, and stores new articles. Duplicate articles are silently skipped via a unique constraint on the URL.
-
-### Database Layer
-Uses `sqlc` to generate type-safe Go code from raw SQL queries -- no ORM. The schema is managed through `goose` migrations. All relationships cascade on delete (deleting a user removes all their data).
-
-### Tech Stack
-
-| Component | Technology |
-|---|---|
-| Language | Go |
-| Router | chi |
-| Database | PostgreSQL |
-| Query generation | sqlc |
-| Migrations | goose |
-| DB driver | lib/pq |
-| Auth | API key (SHA-256) |
-
-For detailed architecture diagrams, see [architecture.md](architecture.md).
-
----
-
-## Project Structure
-
-```
-briefed/
-├── main.go                  # Entry point
-├── handler_*.go             # HTTP request handlers
-├── middleware_auth.go        # Authentication middleware
-├── scrapper.go              # Background RSS scraper
-├── models.go                # API response types
-├── internal/
-│   ├── auth/                # API key extraction
-│   └── database/            # sqlc-generated DB layer
-└── sql/
-    ├── schema/              # Database migrations
-    └── queries/             # SQL queries for sqlc
+```bash
+curl -b cookies.txt "http://localhost:8080/v1/posts?limit=20&offset=0"
 ```
 
----
+Posts come only from feeds followed by the authenticated user and are ordered newest first.
 
-## License
+## Endpoints
 
-MIT
+| Method | Path | Auth | Description |
+|---|---|---:|---|
+| GET | `/v1/health` | No | Health check |
+| GET | `/v1/categories` | No | List seeded categories |
+| GET | `/v1/feeds` | No | Search/filter the shared feed catalog |
+| GET | `/v1/feeds/{feedID}` | No | Get a shared feed |
+| POST | `/v1/auth/register` | No | Register and save onboarding choices |
+| POST | `/v1/auth/login` | No | Log in |
+| POST | `/v1/auth/logout` | No | Delete the current session |
+| GET | `/v1/me` | Yes | Get profile, interests, and followed feeds |
+| PUT | `/v1/me/categories` | Yes | Replace selected interests |
+| GET | `/v1/me/feeds` | Yes | List followed feeds |
+| POST | `/v1/me/feeds/{feedID}` | Yes | Follow a feed |
+| DELETE | `/v1/me/feeds/{feedID}` | Yes | Unfollow a feed |
+| POST | `/v1/feeds` | Yes | Validate and contribute a feed |
+| GET | `/v1/posts` | Yes | Get personalized posts |
+
+## Development notes
+
+Write schema changes under `sql/schema` and queries under `sql/queries`. Never manually edit `internal/database`; run `sqlc generate` instead.
+
+Categories and starter feeds are seeded separately. There is no category administration API in this version.
