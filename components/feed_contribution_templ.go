@@ -137,7 +137,7 @@ func FeedContributionForm(data webtypes.FeedContributionData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</div></fieldset><div class=\"mt-8 border-t border-rule pt-5 text-xs leading-5 text-muted\"><p><span class=\"font-semibold text-ink\">What happens next:</span> Briefed fetches the URL, confirms it is RSS or Atom, extracts its title, publishes it globally, and follows it for you.</p></div></div><footer class=\"flex items-center justify-end gap-3 border-t border-rule px-6 py-5\"><button type=\"button\" data-action=\"close-drawer\" class=\"rounded-control px-5 py-3 text-sm font-semibold text-muted hover:text-ink\">Cancel</button> <button id=\"feed-submit\" type=\"submit\" class=\"rounded-full bg-forest-900 px-6 py-3 text-sm font-semibold text-paper-raised hover:bg-forest-800 disabled:cursor-wait disabled:opacity-60\"><span class=\"htmx-indicator mr-2\">Checking…</span>Add feed</button></footer></form>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</div></fieldset><div class=\"mt-8 border-t border-rule pt-5 text-xs leading-5 text-muted\"><p><span class=\"font-semibold text-ink\">What happens next:</span> Briefed fetches the URL, confirms it is RSS or Atom, extracts its title, publishes it globally, and follows it for you.</p></div></div><footer class=\"flex items-center justify-end gap-3 border-t border-rule px-6 py-5\"><button type=\"button\" data-action=\"close-drawer\" class=\"rounded-control px-5 py-3 text-sm font-semibold text-muted hover:text-ink\">Cancel</button> <button id=\"feed-submit\" type=\"submit\" class=\"rounded-full bg-forest-900 px-6 py-3 w-fit text-sm font-semibold text-paper-raised hover:bg-forest-800 disabled:cursor-wait disabled:opacity-60\"><span class=\"htmx-indicator mr-2\">Checking…</span><span class=\"[.htmx-request_&]:hidden\">Add feed</span></button></footer></form>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -178,7 +178,7 @@ func FeedContributionSuccess(data webtypes.FeedContributionSuccess) templ.Compon
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(data.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/feed_contribution.templ`, Line: 64, Col: 80}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/feed_contribution.templ`, Line: 66, Col: 80}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -196,7 +196,7 @@ func FeedContributionSuccess(data webtypes.FeedContributionSuccess) templ.Compon
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(data.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/feed_contribution.templ`, Line: 68, Col: 95}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/feed_contribution.templ`, Line: 70, Col: 95}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -214,7 +214,7 @@ func FeedContributionSuccess(data webtypes.FeedContributionSuccess) templ.Compon
 		var templ_7745c5c3_Var9 templ.SafeURL
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(data.URL))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/feed_contribution.templ`, Line: 71, Col: 36}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/feed_contribution.templ`, Line: 73, Col: 36}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
@@ -227,7 +227,7 @@ func FeedContributionSuccess(data webtypes.FeedContributionSuccess) templ.Compon
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(data.URL)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/feed_contribution.templ`, Line: 71, Col: 156}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/feed_contribution.templ`, Line: 73, Col: 156}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {

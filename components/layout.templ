@@ -19,16 +19,6 @@ templ Header(viewer *webtypes.Viewer) {
 					<button
 						type="button"
 						data-drawer-trigger
-						hx-get="/partials/feeds/new"
-						hx-target="#overlay-root"
-						hx-swap="innerHTML"
-						class="rounded-full border border-ink px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-ink hover:text-paper"
-					>
-						<span aria-hidden="true">+</span> <span class="sm:hidden">Feed</span><span class="hidden sm:inline">Add feed</span>
-					</button>
-					<button
-						type="button"
-						data-drawer-trigger
 						hx-get="/partials/preferences"
 						hx-target="#overlay-root"
 						hx-swap="innerHTML"

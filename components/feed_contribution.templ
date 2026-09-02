@@ -50,7 +50,9 @@ templ FeedContributionForm(data webtypes.FeedContributionData) {
 		</div>
 		<footer class="flex items-center justify-end gap-3 border-t border-rule px-6 py-5">
 			<button type="button" data-action="close-drawer" class="rounded-control px-5 py-3 text-sm font-semibold text-muted hover:text-ink">Cancel</button>
-			<button id="feed-submit" type="submit" class="rounded-full bg-forest-900 px-6 py-3 text-sm font-semibold text-paper-raised hover:bg-forest-800 disabled:cursor-wait disabled:opacity-60"><span class="htmx-indicator mr-2">Checking…</span>Add feed</button>
+			<button id="feed-submit" type="submit" class="rounded-full bg-forest-900 px-6 py-3 w-fit text-sm font-semibold text-paper-raised hover:bg-forest-800 disabled:cursor-wait disabled:opacity-60">
+				<span class="htmx-indicator mr-2">Checking…</span><span class="[.htmx-request_&]:hidden">Add feed</span>
+			</button>
 		</footer>
 	</form>
 }

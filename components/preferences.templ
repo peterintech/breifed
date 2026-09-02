@@ -30,7 +30,7 @@ templ PreferencesDrawer(data webtypes.PreferencesData) {
 						</div>
 					</fieldset>
 					<div class="mt-8 border-t border-rule pt-7">
-						<div class="flex items-end justify-between gap-4"><div><h3 class="text-xs font-bold uppercase tracking-[0.09em] text-ink">Followed sources</h3><p class="mt-2 text-sm leading-6 text-muted">Choose which publishers should appear in your timeline.</p></div><span class="text-xs text-muted">{ fmt.Sprint(selectedFeedCount(data.Feeds)) } selected</span></div>
+						<div class="flex items-end justify-between gap-4"><div><h3 class="text-xs font-bold uppercase tracking-[0.09em] text-ink">Followed sources</h3><p class="mt-2 text-sm leading-6 text-muted">Choose which publishers should appear in your timeline.</p></div><span class="text-xs text-muted">{ fmt.Sprint(selectedFeedCount(data.Feeds)) } followed</span></div>
 						@PreferenceFeeds(data.Feeds)
 					</div>
 				</div>
@@ -46,7 +46,19 @@ templ PreferenceFeeds(feeds []webtypes.FeedOption) {
 			<p class="rounded-control border border-dashed border-rule px-4 py-6 text-center text-sm text-muted">Choose an interest to see matching sources.</p>
 		} else {
 			for _, feed := range feeds {
-				<label class="block"><input class="peer sr-only" type="checkbox" name="feed_ids" value={ feed.ID.String() } checked?={ feed.Selected }/><span class="flex cursor-pointer items-center gap-3 rounded-control border border-transparent px-3 py-3 hover:bg-paper peer-checked:border-forest-800 peer-checked:bg-forest-50 peer-focus-visible:ring-2 peer-focus-visible:ring-forest-800"><span class="grid size-10 shrink-0 place-items-center rounded-full bg-ink text-[0.65rem] font-bold text-paper">{ initials(feed.Name) }</span><span class="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{ feed.Name }</span><span class="text-xs font-semibold text-forest-800 peer-checked:inline">Follow</span></span></label>
+				<label class="block">
+					<input class="peer sr-only" type="checkbox" name="feed_ids" value={ feed.ID.String() } checked?={ feed.Selected }/>
+					<span class="flex cursor-pointer items-center gap-3 rounded-control border border-transparent px-3 py-3 hover:bg-paper peer-checked:border-forest-800 peer-checked:bg-forest-50 peer-focus-visible:ring-2 peer-focus-visible:ring-forest-800">
+						<span class="grid size-10 shrink-0 place-items-center rounded-full bg-ink text-[0.65rem] font-bold text-paper">{ initials(feed.Name) }</span><span class="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{ feed.Name }</span>
+						<span class="text-xs font-semibold text-forest-800 peer-checked:inline">
+							if feed.Selected {
+								Following
+							} else {
+								Follow
+							}
+						</span>
+					</span>
+				</label>
 			}
 		}
 	</div>
