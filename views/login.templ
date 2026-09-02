@@ -1,0 +1,34 @@
+package views
+
+import (
+	"github.com/google/uuid"
+	"github.com/peterintech/briefed/components"
+	webtypes "github.com/peterintech/briefed/types"
+)
+
+templ Login(data webtypes.LoginData) {
+	@Page("Log in · Briefed", nil) {
+		<main class="mx-auto grid min-h-[calc(100vh-5rem)] max-w-[96rem] items-center px-5 py-14 lg:grid-cols-2 lg:px-8">
+			<section class="hidden max-w-xl lg:block">
+				<p class="text-xs font-bold uppercase tracking-[0.1em] text-forest-800">Welcome back</p>
+				<h1 class="mt-4 text-6xl font-bold leading-[0.98] tracking-[-0.055em] text-ink">Your reading list, right where you left it.</h1>
+				<p class="mt-6 max-w-[48ch] text-base leading-7 text-muted">Sign in to see the newest stories from the sources you follow.</p>
+			</section>
+			<section class="mx-auto w-full max-w-md rounded-overlay border border-rule bg-paper-raised p-7 shadow-overlay sm:p-9">
+				<h1 class="text-3xl font-bold tracking-[-0.04em] text-ink lg:hidden">Log in to Briefed</h1>
+				<form method="post" action="/auth/login" hx-post="/auth/login" hx-target="#login-error" hx-swap="innerHTML" class="mt-6 space-y-5 lg:mt-0">
+					<div id="login-error">
+						if data.Error != "" {
+							@components.InlineError(data.Error)
+						}
+					</div>
+					@components.TextField("email", "Email", "you@example.com", data.Email, "email", "email")
+					@components.TextField("password", "Password", "Your password", "", "password", "current-password")
+					<button type="submit" class="inline-flex w-full items-center justify-center rounded-full bg-forest-900 px-6 py-3.5 text-sm font-semibold text-paper-raised hover:bg-forest-800">Log in</button>
+				</form>
+				<p class="mt-6 text-center text-sm text-muted">New here? <a href="/" class="font-semibold text-forest-800 hover:underline">Personalize your feed</a></p>
+			</section>
+		</main>
+		@components.OnboardingModal(webtypes.InterestStepData{Categories: data.Categories, Selected: map[uuid.UUID]bool{}})
+	}
+}

@@ -37,7 +37,9 @@ func main() {
 	db := database.New(conn)
 	apiConfig := api.New(db, conn)
 	router := apiConfig.NewRouter()
-	webhandlers.New(db, conn).RegisterRoutes(router)
+	webHandler := webhandlers.New(db, conn)
+	webHandler.RegisterRoutes(router)
+	webHandler.RegisterAuthRoutes(router)
 
 	server := &http.Server{
 		Handler: router,

@@ -3,15 +3,13 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"net/http"
-	"strings"
-	"time"
 
 	"github.com/google/uuid"
+	"github.com/peterintech/briefed/internal/accounts"
 	"github.com/peterintech/briefed/internal/database"
 	"github.com/peterintech/briefed/internal/sessionauth"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type authParameters struct {
@@ -29,77 +27,24 @@ func (ac *apiConfig) registerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	params.Name = strings.TrimSpace(params.Name)
-	params.Email = strings.ToLower(strings.TrimSpace(params.Email))
-	if params.Name == "" || params.Email == "" || len(params.Password) < 8 {
-		errorResponse(w, http.StatusBadRequest, "name, email, and a password of at least 8 characters are required")
-		return
-	}
-
-	passwordHash, err := bcrypt.GenerateFromPassword([]byte(params.Password), bcrypt.DefaultCost)
-	if err != nil {
-		errorResponse(w, http.StatusInternalServerError, "could not secure password")
-		return
-	}
-	token, err := sessionauth.NewToken()
-	if err != nil {
-		errorResponse(w, http.StatusInternalServerError, "could not create session")
-		return
-	}
-
-	tx, err := ac.Conn.BeginTx(r.Context(), nil)
-	if err != nil {
-		errorResponse(w, http.StatusInternalServerError, "could not start registration")
-		return
-	}
-	defer tx.Rollback()
-
-	queries := ac.DB.WithTx(tx)
-	now := time.Now().UTC()
-	user, err := queries.CreateUser(r.Context(), database.CreateUserParams{
-		ID: uuid.New(), CreatedAt: now, UpdatedAt: now, Name: params.Name,
-		Email: params.Email, PasswordHash: string(passwordHash),
+	result, err := accounts.Register(r.Context(), ac.Conn, ac.DB, accounts.RegisterInput{
+		Name: params.Name, Email: params.Email, Password: params.Password,
+		CategoryIDs: params.CategoryIDs, FeedIDs: params.FeedIDs,
 	})
-	if err != nil {
-		if strings.Contains(err.Error(), "users_email_key") {
-			errorResponse(w, http.StatusConflict, "an account with that email already exists")
-			return
-		}
-		errorResponse(w, http.StatusInternalServerError, fmt.Sprintf("could not create user: %v", err))
+	switch {
+	case errors.Is(err, accounts.ErrInvalidRegistration), errors.Is(err, accounts.ErrInvalidChoices):
+		errorResponse(w, http.StatusBadRequest, err.Error())
 		return
-	}
-
-	for _, categoryID := range params.CategoryIDs {
-		if err := queries.CreateUserCategory(r.Context(), database.CreateUserCategoryParams{
-			UserID: user.ID, CategoryID: categoryID,
-		}); err != nil {
-			errorResponse(w, http.StatusBadRequest, "one or more category IDs are invalid")
-			return
-		}
-	}
-	for _, feedID := range params.FeedIDs {
-		if err := queries.CreateFeedFollow(r.Context(), database.CreateFeedFollowParams{
-			UserID: user.ID, FeedID: feedID,
-		}); err != nil {
-			errorResponse(w, http.StatusBadRequest, "one or more feed IDs are invalid")
-			return
-		}
-	}
-
-	expiresAt := now.Add(sessionauth.Duration)
-	if _, err := queries.CreateSession(r.Context(), database.CreateSessionParams{
-		ID: uuid.New(), UserID: user.ID, Token: token, CreatedAt: now, ExpiresAt: expiresAt,
-	}); err != nil {
-		errorResponse(w, http.StatusInternalServerError, "could not create session")
+	case errors.Is(err, accounts.ErrEmailExists):
+		errorResponse(w, http.StatusConflict, err.Error())
 		return
-	}
-	if err := tx.Commit(); err != nil {
+	case err != nil:
 		errorResponse(w, http.StatusInternalServerError, "could not finish registration")
 		return
 	}
 
-	sessionauth.SetCookie(w, r, token, expiresAt)
-	jsonResponse(w, http.StatusCreated, databaseUserToUser(user))
+	sessionauth.SetCookie(w, r, result.Token, result.ExpiresAt)
+	jsonResponse(w, http.StatusCreated, databaseUserToUser(result.User))
 }
 
 func (ac *apiConfig) loginHandler(w http.ResponseWriter, r *http.Request) {
@@ -109,29 +54,18 @@ func (ac *apiConfig) loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	email := strings.ToLower(strings.TrimSpace(params.Email))
-	user, err := ac.DB.GetUserByEmail(r.Context(), email)
-	if err != nil || bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(params.Password)) != nil {
+	result, err := accounts.Login(r.Context(), ac.DB, params.Email, params.Password)
+	if errors.Is(err, accounts.ErrInvalidCredentials) {
 		errorResponse(w, http.StatusUnauthorized, "invalid email or password")
 		return
 	}
-
-	token, err := sessionauth.NewToken()
 	if err != nil {
 		errorResponse(w, http.StatusInternalServerError, "could not create session")
 		return
 	}
-	now := time.Now().UTC()
-	expiresAt := now.Add(sessionauth.Duration)
-	if _, err := ac.DB.CreateSession(r.Context(), database.CreateSessionParams{
-		ID: uuid.New(), UserID: user.ID, Token: token, CreatedAt: now, ExpiresAt: expiresAt,
-	}); err != nil {
-		errorResponse(w, http.StatusInternalServerError, "could not create session")
-		return
-	}
 
-	sessionauth.SetCookie(w, r, token, expiresAt)
-	jsonResponse(w, http.StatusOK, databaseUserToUser(user))
+	sessionauth.SetCookie(w, r, result.Token, result.ExpiresAt)
+	jsonResponse(w, http.StatusOK, databaseUserToUser(result.User))
 }
 
 func (ac *apiConfig) logoutHandler(w http.ResponseWriter, r *http.Request) {

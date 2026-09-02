@@ -1,6 +1,7 @@
 package views
 
 import (
+	"github.com/google/uuid"
 	"github.com/peterintech/briefed/components"
 	webtypes "github.com/peterintech/briefed/types"
 )
@@ -11,5 +12,8 @@ templ Home(data webtypes.HomeData) {
 			@components.TopicFilters(data.Timeline)
 			@components.Timeline(data.Timeline)
 		</main>
+		if data.Viewer == nil {
+			@components.OnboardingModal(webtypes.InterestStepData{Categories: data.Categories, Selected: map[uuid.UUID]bool{}})
+		}
 	}
 }

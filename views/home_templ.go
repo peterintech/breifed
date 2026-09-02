@@ -9,6 +9,7 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
+	"github.com/google/uuid"
 	"github.com/peterintech/briefed/components"
 	webtypes "github.com/peterintech/briefed/types"
 )
@@ -61,6 +62,12 @@ func Home(data webtypes.HomeData) templ.Component {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</main>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
+			}
+			if data.Viewer == nil {
+				templ_7745c5c3_Err = components.OnboardingModal(webtypes.InterestStepData{Categories: data.Categories, Selected: map[uuid.UUID]bool{}}).Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
 			}
 			return nil
 		})

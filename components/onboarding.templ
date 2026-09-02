@@ -1,0 +1,128 @@
+package components
+
+import (
+	"fmt"
+
+	webtypes "github.com/peterintech/briefed/types"
+)
+
+templ OnboardingModal(data webtypes.InterestStepData) {
+	<dialog id="onboarding-dialog" class="briefed-dialog" aria-labelledby="onboarding-title">
+		<div id="onboarding-content">
+			@InterestStep(data)
+		</div>
+	</dialog>
+}
+
+templ ModalHeader(step int, title, eyebrow, description string) {
+	<div class="flex items-start justify-between gap-6 border-b border-rule px-6 py-6 sm:px-8">
+		<div>
+			<p class="text-xs font-bold uppercase tracking-[0.1em] text-forest-800">{ eyebrow }</p>
+			<h2 id="onboarding-title" class="mt-2 text-3xl font-bold tracking-[-0.04em] text-ink">{ title }</h2>
+			<p class="mt-2 max-w-[52ch] text-sm leading-6 text-muted">{ description }</p>
+		</div>
+		<button type="button" data-action="dismiss-onboarding" aria-label="Close" class="grid size-10 shrink-0 place-items-center rounded-full text-muted hover:bg-paper hover:text-ink">
+			<span aria-hidden="true" class="text-2xl leading-none">×</span>
+		</button>
+	</div>
+	<div class="grid grid-cols-3 gap-2 px-6 pt-5 sm:px-8" aria-label={ "Step " + fmt.Sprint(step) + " of 3" }>
+		for i := 1; i <= 3; i++ {
+			<div class={ stepClass(i <= step) }></div>
+		}
+	</div>
+}
+
+templ InterestStep(data webtypes.InterestStepData) {
+	@ModalHeader(1, "What are you into?", "Shape your Briefed", "Pick the topics you want to see. You can change these later.")
+	<form hx-get="/partials/onboarding/feeds" hx-target="#onboarding-content" hx-swap="innerHTML" class="px-6 py-6 sm:px-8">
+		if data.Error != "" {
+			@InlineError(data.Error)
+		}
+		<fieldset class="grid gap-3 sm:grid-cols-2">
+			<legend class="sr-only">Choose interests</legend>
+			for _, category := range data.Categories {
+				<label class="relative">
+					<input class="peer sr-only" type="checkbox" name="category_ids" value={ category.ID.String() } checked?={ selected(data.Selected, category.ID) }/>
+					<span class="flex min-h-14 cursor-pointer items-center justify-between rounded-control border border-rule bg-paper-raised px-4 py-3 text-sm font-semibold text-ink transition-colors hover:border-forest-700 peer-checked:border-forest-800 peer-checked:bg-forest-50 peer-checked:text-forest-900 peer-focus-visible:ring-2 peer-focus-visible:ring-forest-800">
+						{ category.Name }
+						<span aria-hidden="true">+</span>
+					</span>
+				</label>
+			}
+		</fieldset>
+		@ModalActions("Continue")
+	</form>
+}
+
+templ FeedStep(data webtypes.FeedStepData) {
+	@ModalHeader(2, "Choose your sources", "Your reading list", "These sources match the topics you chose. Select at least one.")
+	<form hx-get="/partials/onboarding/account" hx-target="#onboarding-content" hx-swap="innerHTML" class="px-6 py-6 sm:px-8">
+		for _, id := range data.CategoryIDs {
+			<input type="hidden" name="category_ids" value={ id.String() }/>
+		}
+		if data.Error != "" {
+			@InlineError(data.Error)
+		}
+		<div class="grid max-h-[45vh] gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
+			for _, feed := range data.Feeds {
+				<label class="relative">
+					<input class="peer sr-only" type="checkbox" name="feed_ids" value={ feed.ID.String() } checked?={ feed.Selected }/>
+					<span class="flex min-h-20 cursor-pointer items-center gap-3 rounded-control border border-rule px-4 py-3 transition-colors hover:border-forest-700 peer-checked:border-forest-800 peer-checked:bg-forest-50 peer-focus-visible:ring-2 peer-focus-visible:ring-forest-800">
+						<span class="grid size-10 shrink-0 place-items-center rounded-full bg-ink text-[0.65rem] font-bold text-paper">{ initials(feed.Name) }</span>
+						<span class="min-w-0">
+							<span class="block truncate text-sm font-semibold text-ink">{ feed.Name }</span>
+							<span class="mt-1 block truncate text-xs text-muted">{ feed.URL }</span>
+						</span>
+					</span>
+				</label>
+			}
+		</div>
+		<div class="mt-7 flex items-center justify-between gap-3">
+			<button type="button" hx-get="/partials/onboarding/interests" hx-target="#onboarding-content" class="rounded-control px-3 py-2 text-sm font-semibold text-muted hover:text-ink">Back</button>
+			<div class="flex items-center gap-3">
+				<button type="button" data-action="dismiss-onboarding" class="px-3 py-2 text-sm font-semibold text-muted hover:text-ink">Not now</button>
+				<button type="submit" class="rounded-full bg-forest-900 px-6 py-3 text-sm font-semibold text-paper-raised hover:bg-forest-800">Continue</button>
+			</div>
+		</div>
+	</form>
+}
+
+templ AccountStep(data webtypes.AccountStepData) {
+	@ModalHeader(3, "Save your Briefed", "Almost there", "Create an account so your selected topics and sources follow you.")
+	<form method="post" action="/auth/register" hx-post="/auth/register" hx-target="#onboarding-content" hx-swap="innerHTML" class="space-y-4 px-6 py-6 sm:px-8">
+		for _, id := range data.CategoryIDs {
+			<input type="hidden" name="category_ids" value={ id.String() }/>
+		}
+		for _, id := range data.FeedIDs {
+			<input type="hidden" name="feed_ids" value={ id.String() }/>
+		}
+		if data.Error != "" {
+			@InlineError(data.Error)
+		}
+		@TextField("name", "Name", "Your name", data.Name, "text", "name")
+		@TextField("email", "Email", "you@example.com", data.Email, "email", "email")
+		@TextField("password", "Password", "At least 8 characters", "", "password", "new-password")
+		<div class="flex items-center justify-between gap-3 pt-3">
+			<button type="button" hx-get={ templ.URL(backToFeedsURL(data.CategoryIDs)) } hx-target="#onboarding-content" class="rounded-control px-3 py-2 text-sm font-semibold text-muted hover:text-ink">Back</button>
+			<button type="submit" class="rounded-full bg-forest-900 px-6 py-3 text-sm font-semibold text-paper-raised hover:bg-forest-800">Create my Briefed</button>
+		</div>
+	</form>
+}
+
+templ ModalActions(label string) {
+	<div class="mt-7 flex items-center justify-end gap-3">
+		<button type="button" data-action="dismiss-onboarding" class="px-3 py-2 text-sm font-semibold text-muted hover:text-ink">Not now</button>
+		<button type="submit" class="rounded-full bg-forest-900 px-6 py-3 text-sm font-semibold text-paper-raised hover:bg-forest-800">{ label }</button>
+	</div>
+}
+
+templ TextField(name, label, placeholder, value, inputType, autocomplete string) {
+	<label class="block">
+		<span class="mb-2 block text-sm font-semibold text-ink">{ label }</span>
+		<input name={ name } type={ inputType } value={ value } placeholder={ placeholder } autocomplete={ autocomplete } required class="w-full rounded-control border border-rule bg-paper px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-forest-800"/>
+	</label>
+}
+
+templ InlineError(message string) {
+	<div role="alert" class="mb-5 rounded-control border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">{ message }</div>
+}
