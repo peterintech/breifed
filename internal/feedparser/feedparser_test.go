@@ -110,6 +110,14 @@ func TestParseAtomImageEnclosure(t *testing.T) {
 	}
 }
 
+func TestFirstHTMLImageWithoutImage(t *testing.T) {
+	for _, value := range []string{"", "plain text", "<p>Story without an image</p>"} {
+		if imageURL := firstHTMLImage(value); imageURL != "" {
+			t.Fatalf("expected no image for %q, got %q", value, imageURL)
+		}
+	}
+}
+
 func TestParseRSSDateWithSingleDigitDay(t *testing.T) {
 	tests := []struct {
 		name string

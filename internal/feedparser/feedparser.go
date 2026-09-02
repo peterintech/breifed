@@ -228,6 +228,9 @@ func mediaImageURL(contents []mediaContent, thumbnails []mediaThumbnail) string 
 
 func firstHTMLImage(value string) string {
 	matches := imagePattern.FindStringSubmatch(value)
+	if len(matches) < 2 {
+		return ""
+	}
 	for _, match := range matches[1:] {
 		if strings.TrimSpace(match) != "" {
 			return html.UnescapeString(strings.TrimSpace(match))
