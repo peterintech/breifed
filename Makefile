@@ -15,4 +15,4 @@ templ:
 	@go tool templ generate --watch
 
 tailwind:
-	@tailwindcss -i ./views/css/styles.css -o ./public/styles.css --watch
+	@tailwindcss -i ./views/css/styles.css -o ./public/styles.css --minify --watch
