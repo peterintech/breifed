@@ -1,0 +1,255 @@
+package components
+
+import (
+	"github.com/peterintech/briefed/internal/timeline"
+	webtypes "github.com/peterintech/briefed/types"
+)
+
+templ TopicFilters(data webtypes.TimelineData) {
+	<section class="border-b border-rule">
+		<div class="mx-auto flex max-w-[96rem] flex-col gap-2 px-5 lg:px-8">
+			<div class="flex items-center gap-7 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+				<a
+					href={ templ.SafeURL(homeURL("", data.Search)) }
+					hx-get={ templ.URL(partialPostsURL("", "", 0)) }
+					hx-include="#news-search"
+					hx-target="#timeline"
+					hx-swap="outerHTML"
+					class={ categoryClass(data.SelectedCategory == "") }
+				>
+					Top Stories
+				</a>
+				for _, category := range data.Categories {
+					<a
+						href={ templ.SafeURL(homeURL(category.Slug, data.Search)) }
+						hx-get={ templ.URL(partialPostsURL(category.Slug, "", 0)) }
+						hx-include="#news-search"
+						hx-target="#timeline"
+						hx-swap="outerHTML"
+						class={ categoryClass(data.SelectedCategory == category.Slug) }
+					>
+						{ category.Name }
+					</a>
+				}
+			</div>
+			<form
+				id="timeline-filters"
+				hx-get="/partials/posts"
+				hx-target="#timeline"
+				hx-swap="outerHTML"
+				hx-trigger="input changed delay:350ms from:#news-search, submit"
+				class="flex items-center border-t border-rule py-3 lg:ml-auto lg:-mt-[3.65rem] lg:w-80 lg:border-t-0"
+			>
+				<input type="hidden" name="category" value={ data.SelectedCategory }/>
+				<label for="news-search" class="sr-only">Search stories</label>
+				<input
+					id="news-search"
+					type="search"
+					name="q"
+					value={ data.Search }
+					placeholder="Search Briefed"
+					autocomplete="off"
+					class="w-full border-b border-muted bg-transparent px-0 py-2 text-sm text-ink placeholder:text-muted focus:border-forest-800"
+				/>
+				<svg aria-hidden="true" viewBox="0 0 24 24" class="-ml-5 size-4 text-ink" fill="none" stroke="currentColor" stroke-width="1.8">
+					<circle cx="11" cy="11" r="7"></circle>
+					<path d="m20 20-3.5-3.5"></path>
+				</svg>
+			</form>
+		</div>
+	</section>
+}
+
+templ Timeline(data webtypes.TimelineData) {
+	<section id="timeline" aria-live="polite" class="mx-auto max-w-[96rem] px-5 py-10 lg:px-8">
+		if len(data.Result.Posts) == 0 {
+			@TimelineEmpty(data.Search, data.SelectedCategory)
+		} else {
+			<div class="grid gap-10 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.3fr)_minmax(15rem,0.72fr)] lg:gap-0">
+				<div class="lg:pr-8">
+					@LeadStory(data.Result.Posts[0])
+				</div>
+				<div class="border-rule lg:border-x lg:px-8">
+					<div class="mb-2 flex items-center gap-7 border-b border-rule">
+						<span class="border-b-2 border-forest-800 py-3 text-sm font-semibold text-ink">{ modeLabel(data.Result.Mode) }</span>
+						if data.Result.Mode == timeline.ModeGlobalFallback {
+							<span class="text-xs text-muted">Follow sources to shape this feed</span>
+						}
+					</div>
+					<div id="latest-posts">
+						if len(data.Result.Posts) > 1 {
+							for _, post := range data.Result.Posts[1:] {
+								@StoryRow(post)
+							}
+						} else {
+							<p class="py-10 text-sm text-muted">More stories will appear after the next feed refresh.</p>
+						}
+						@LoadMore(data.Result, data.SelectedCategory, data.Search)
+					</div>
+				</div>
+				<aside class="border-t border-rule pt-8 lg:border-t-0 lg:pl-8 lg:pt-0">
+					@DiscoveryRail(data)
+				</aside>
+			</div>
+		}
+	</section>
+}
+
+templ LeadStory(post timeline.Post) {
+	<article>
+		<div class="mb-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.08em] text-forest-800">
+			if category := primaryCategory(post); category != nil {
+				<span>{ category.Name }</span>
+			} else {
+				<span>Top story</span>
+			}
+		</div>
+		<a href={ templ.SafeURL(post.URL) } target="_blank" rel="noreferrer" class="group block">
+			<h1 class="max-w-[16ch] text-[clamp(2.4rem,5vw,4.75rem)] font-bold leading-[0.98] tracking-[-0.055em] text-ink transition-colors group-hover:text-forest-800">
+				{ post.Title }
+			</h1>
+			if description := excerpt(post.Description, 240); description != "" {
+				<p class="mt-6 max-w-[54ch] text-base leading-7 text-muted">{ description }</p>
+			}
+			<div class="mt-5 flex items-center gap-2 text-xs text-muted">
+				<span class="font-semibold text-ink">{ post.Feed.Name }</span>
+				<span aria-hidden="true">·</span>
+				<time datetime={ post.PublishedAt.Format("2006-01-02T15:04:05Z07:00") }>{ relativeTime(post.PublishedAt) }</time>
+			</div>
+			if post.ImageURL != nil && *post.ImageURL != "" {
+				<div data-image-wrap class="mt-7 overflow-hidden rounded-image bg-rule">
+					<img
+						data-article-image
+						src={ templ.SafeURL(*post.ImageURL) }
+						alt=""
+						loading="eager"
+						class="aspect-[4/5] w-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.015]"
+					/>
+				</div>
+			}
+		</a>
+	</article>
+}
+
+templ StoryRow(post timeline.Post) {
+	<article class="border-b border-rule py-6">
+		<a href={ templ.SafeURL(post.URL) } target="_blank" rel="noreferrer" class="group grid grid-cols-[1fr_auto] gap-5">
+			<div>
+				if category := primaryCategory(post); category != nil {
+					<p class="mb-2 text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-forest-800">{ category.Name }</p>
+				}
+				<h2 class="text-xl font-semibold leading-tight tracking-[-0.025em] text-ink transition-colors group-hover:text-forest-800">{ post.Title }</h2>
+				if description := excerpt(post.Description, 125); description != "" {
+					<p class="mt-2 line-clamp-2 text-sm leading-5 text-muted">{ description }</p>
+				}
+				<p class="mt-3 text-xs text-muted">
+					<span class="font-medium text-ink">{ post.Feed.Name }</span>
+					<span aria-hidden="true"> · </span>
+					<time datetime={ post.PublishedAt.Format("2006-01-02T15:04:05Z07:00") }>{ relativeTime(post.PublishedAt) }</time>
+				</p>
+			</div>
+			if post.ImageURL != nil && *post.ImageURL != "" {
+				<div data-image-wrap class="overflow-hidden rounded-image bg-rule">
+					<img data-article-image src={ templ.SafeURL(*post.ImageURL) } alt="" loading="lazy" class="h-24 w-28 object-cover sm:h-28 sm:w-36"/>
+				</div>
+			}
+		</a>
+	</article>
+}
+
+templ PostRows(data webtypes.TimelineData) {
+	<div class="contents">
+		for _, post := range data.Result.Posts {
+			@StoryRow(post)
+		}
+		@LoadMore(data.Result, data.SelectedCategory, data.Search)
+	</div>
+}
+
+templ LoadMore(result timeline.Result, categoryID, search string) {
+	if result.HasMore {
+		<button
+			type="button"
+			hx-get={ templ.URL(partialPostsURL(categoryID, search, result.Offset + int32(len(result.Posts)))) }
+			hx-target="this"
+			hx-swap="outerHTML"
+			class="mt-7 inline-flex w-full items-center justify-center rounded-full border border-ink px-5 py-3 text-sm font-semibold text-ink transition-colors hover:bg-ink hover:text-paper"
+		>
+			<span>Load more</span>
+			<span class="htmx-indicator ml-2" aria-hidden="true">Loading…</span>
+		</button>
+	}
+}
+
+templ DiscoveryRail(data webtypes.TimelineData) {
+	<section>
+		<div class="flex items-center justify-between gap-3 border-b border-rule pb-3">
+			<h2 class="text-xs font-bold uppercase tracking-[0.09em] text-ink">Sources</h2>
+			if data.CanContribute {
+				<button type="button" data-drawer-trigger hx-get="/partials/feeds/new" hx-target="#overlay-root" hx-swap="innerHTML" class="text-xs font-semibold text-forest-800 hover:underline">+ Add feed</button>
+			}
+		</div>
+		<ul class="divide-y divide-rule">
+			for _, source := range data.Sources {
+				<li class="flex items-center gap-3 py-4">
+					<span class="grid size-9 shrink-0 place-items-center rounded-full bg-ink text-[0.65rem] font-bold text-paper">{ initials(source.Name) }</span>
+					<span class="min-w-0 flex-1 truncate text-sm font-medium text-ink">{ source.Name }</span>
+					if source.Followed {
+						<span class="text-xs font-semibold text-forest-800">Following</span>
+					}
+				</li>
+			}
+		</ul>
+	</section>
+	<section class="mt-9">
+		<div class="flex items-center justify-between border-b border-rule pb-3">
+			<h2 class="text-xs font-bold uppercase tracking-[0.09em] text-ink">Topics</h2>
+		</div>
+		<div class="flex flex-wrap gap-2 pt-4">
+			for _, category := range data.Categories {
+				<a
+					href={ templ.SafeURL(homeURL(category.Slug, "")) }
+					hx-get={ templ.URL(partialPostsURL(category.Slug, "", 0)) }
+					hx-target="#timeline"
+					hx-swap="outerHTML"
+					class="rounded-full border border-rule bg-paper-raised px-3 py-2 text-xs font-medium text-ink transition-colors hover:border-forest-700 hover:text-forest-800"
+				>
+					{ category.Name }
+				</a>
+			}
+		</div>
+	</section>
+}
+
+templ TimelineEmpty(search, categoryID string) {
+	<div class="mx-auto max-w-xl py-24 text-center">
+		<div class="mx-auto grid size-12 place-items-center rounded-full border border-rule text-forest-800">
+			<svg aria-hidden="true" viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="1.7">
+				<path d="M4 6h16M4 12h10M4 18h7"></path>
+			</svg>
+		</div>
+		<h2 class="mt-5 text-2xl font-semibold tracking-tight text-ink">No stories found</h2>
+		<p class="mt-2 text-sm leading-6 text-muted">Try a broader search or switch back to Top Stories.</p>
+		<a
+			href="/"
+			hx-get="/partials/posts"
+			hx-target="#timeline"
+			hx-swap="outerHTML"
+			class="mt-6 inline-flex rounded-full bg-forest-900 px-5 py-3 text-sm font-semibold text-paper-raised hover:bg-forest-800"
+		>
+			Clear filters
+		</a>
+	</div>
+}
+
+templ TimelineSkeleton() {
+	<div class="animate-pulse space-y-6 py-8" aria-label="Loading stories">
+		for i := 0; i < 4; i++ {
+			<div class="border-b border-rule pb-6">
+				<div class="h-3 w-20 rounded bg-rule"></div>
+				<div class="mt-3 h-6 w-4/5 rounded bg-rule"></div>
+				<div class="mt-2 h-4 w-3/5 rounded bg-rule"></div>
+			</div>
+		}
+	</div>
+}

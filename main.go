@@ -10,6 +10,7 @@ import (
 
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
+	webhandlers "github.com/peterintech/briefed/handlers"
 	"github.com/peterintech/briefed/internal/api"
 	"github.com/peterintech/briefed/internal/database"
 	"github.com/peterintech/briefed/internal/scrapper"
@@ -18,8 +19,8 @@ import (
 func main() {
 	godotenv.Load(".env")
 
-	portStr := os.Getenv("PORT")
-	if portStr == "" {
+	port := os.Getenv("PORT")
+	if port == "" {
 		log.Fatal("PORT environment variable is not set")
 	}
 	dbURL := os.Getenv("DB_URL")
@@ -31,21 +32,25 @@ func main() {
 	if err != nil {
 		log.Fatal("can't connect to the database:", err)
 	}
-
-	db := database.New(conn)
 	defer conn.Close()
 
-	api := api.New(db)
-	router := api.NewRouter()
+	db := database.New(conn)
+	apiConfig := api.New(db, conn)
+	router := apiConfig.NewRouter()
+	webHandler := webhandlers.New(db, conn)
+	webHandler.RegisterRoutes(router)
+	webHandler.RegisterAuthRoutes(router)
+	webHandler.RegisterPreferenceRoutes(router)
+	webHandler.RegisterFeedContributionRoutes(router)
 
-	srv := &http.Server{
+	server := &http.Server{
 		Handler: router,
-		Addr:    fmt.Sprintf(":%s", portStr),
+		Addr:    fmt.Sprintf(":%s", port),
 	}
 	const collectionConcurrency = 10
 	const collectionInterval = time.Minute
 	go scrapper.Start(db, collectionConcurrency, collectionInterval)
 
-	log.Printf("Server is running on port %s", portStr)
-	log.Fatal(srv.ListenAndServe())
+	log.Printf("Server is running on port %s", port)
+	log.Fatal(server.ListenAndServe())
 }

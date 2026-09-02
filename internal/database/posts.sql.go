@@ -13,10 +13,10 @@ import (
 	"github.com/google/uuid"
 )
 
-const createPost = `-- name: CreatePost :one
-INSERT INTO posts (id, created_at, updated_at, title, description, published_at, url, feed_id)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, created_at, updated_at, title, description, published_at, url, feed_id
+const createPost = `-- name: CreatePost :exec
+INSERT INTO posts (id, created_at, updated_at, title, description, published_at, url, feed_id, image_url)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+ON CONFLICT (url) DO NOTHING
 `
 
 type CreatePostParams struct {
@@ -28,10 +28,11 @@ type CreatePostParams struct {
 	PublishedAt time.Time
 	Url         string
 	FeedID      uuid.UUID
+	ImageUrl    sql.NullString
 }
 
-func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, error) {
-	row := q.db.QueryRowContext(ctx, createPost,
+func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) error {
+	_, err := q.db.ExecContext(ctx, createPost,
 		arg.ID,
 		arg.CreatedAt,
 		arg.UpdatedAt,
@@ -40,54 +41,47 @@ func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, e
 		arg.PublishedAt,
 		arg.Url,
 		arg.FeedID,
+		arg.ImageUrl,
 	)
-	var i Post
-	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.Title,
-		&i.Description,
-		&i.PublishedAt,
-		&i.Url,
-		&i.FeedID,
-	)
-	return i, err
+	return err
 }
 
-const getPostsForUser = `-- name: GetPostsForUser :many
-SELECT p.id, p.created_at, p.updated_at, p.title, p.description, p.published_at, p.url, p.feed_id
-FROM posts p
-JOIN feeds f ON p.feed_id = f.id
-WHERE f.user_id = $1
-ORDER BY p.published_at DESC
-LIMIT $2 OFFSET $3
+const getCategoriesForFeeds = `-- name: GetCategoriesForFeeds :many
+SELECT
+    fc.feed_id,
+    c.id,
+    c.name,
+    c.slug,
+    c.created_at
+FROM feed_categories fc
+JOIN categories c ON c.id = fc.category_id
+WHERE fc.feed_id = ANY(string_to_array($1, ',')::uuid[])
+ORDER BY fc.feed_id, c.name ASC
 `
 
-type GetPostsForUserParams struct {
-	UserID uuid.UUID
-	Limit  int32
-	Offset int32
+type GetCategoriesForFeedsRow struct {
+	FeedID    uuid.UUID
+	ID        uuid.UUID
+	Name      string
+	Slug      string
+	CreatedAt time.Time
 }
 
-func (q *Queries) GetPostsForUser(ctx context.Context, arg GetPostsForUserParams) ([]Post, error) {
-	rows, err := q.db.QueryContext(ctx, getPostsForUser, arg.UserID, arg.Limit, arg.Offset)
+func (q *Queries) GetCategoriesForFeeds(ctx context.Context, stringToArray string) ([]GetCategoriesForFeedsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getCategoriesForFeeds, stringToArray)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Post
+	var items []GetCategoriesForFeedsRow
 	for rows.Next() {
-		var i Post
+		var i GetCategoriesForFeedsRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.Title,
-			&i.Description,
-			&i.PublishedAt,
-			&i.Url,
 			&i.FeedID,
+			&i.ID,
+			&i.Name,
+			&i.Slug,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -100,4 +94,213 @@ func (q *Queries) GetPostsForUser(ctx context.Context, arg GetPostsForUserParams
 		return nil, err
 	}
 	return items, nil
+}
+
+const getGlobalPosts = `-- name: GetGlobalPosts :many
+SELECT
+    p.id,
+    p.created_at,
+    p.updated_at,
+    p.title,
+    p.description,
+    p.published_at,
+    p.url,
+    p.feed_id,
+    p.image_url,
+    f.name AS feed_name,
+    f.url AS feed_url
+FROM posts p
+JOIN feeds f ON f.id = p.feed_id
+WHERE (
+    $1::text = ''
+    OR EXISTS (
+        SELECT 1
+        FROM feed_categories fc
+        WHERE fc.feed_id = p.feed_id
+          AND fc.category_id = ANY(string_to_array($1::text, ',')::uuid[])
+    )
+)
+AND (
+    $2::text = ''
+    OR p.title ILIKE '%' || $2::text || '%'
+    OR COALESCE(p.description, '') ILIKE '%' || $2::text || '%'
+    OR f.name ILIKE '%' || $2::text || '%'
+)
+ORDER BY p.published_at DESC
+LIMIT $4 OFFSET $3
+`
+
+type GetGlobalPostsParams struct {
+	CategoryIds  string
+	Search       string
+	ResultOffset int32
+	ResultLimit  int32
+}
+
+type GetGlobalPostsRow struct {
+	ID          uuid.UUID
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	Title       string
+	Description sql.NullString
+	PublishedAt time.Time
+	Url         string
+	FeedID      uuid.UUID
+	ImageUrl    sql.NullString
+	FeedName    string
+	FeedUrl     string
+}
+
+func (q *Queries) GetGlobalPosts(ctx context.Context, arg GetGlobalPostsParams) ([]GetGlobalPostsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getGlobalPosts,
+		arg.CategoryIds,
+		arg.Search,
+		arg.ResultOffset,
+		arg.ResultLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetGlobalPostsRow
+	for rows.Next() {
+		var i GetGlobalPostsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Title,
+			&i.Description,
+			&i.PublishedAt,
+			&i.Url,
+			&i.FeedID,
+			&i.ImageUrl,
+			&i.FeedName,
+			&i.FeedUrl,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getPostsForUser = `-- name: GetPostsForUser :many
+SELECT
+    p.id,
+    p.created_at,
+    p.updated_at,
+    p.title,
+    p.description,
+    p.published_at,
+    p.url,
+    p.feed_id,
+    p.image_url,
+    f.name AS feed_name,
+    f.url AS feed_url
+FROM posts p
+JOIN feed_follows ff ON ff.feed_id = p.feed_id
+JOIN feeds f ON f.id = p.feed_id
+WHERE ff.user_id = $1
+AND (
+    $2::text = ''
+    OR EXISTS (
+        SELECT 1
+        FROM feed_categories fc
+        WHERE fc.feed_id = p.feed_id
+          AND fc.category_id = ANY(string_to_array($2::text, ',')::uuid[])
+    )
+)
+AND (
+    $3::text = ''
+    OR p.title ILIKE '%' || $3::text || '%'
+    OR COALESCE(p.description, '') ILIKE '%' || $3::text || '%'
+    OR f.name ILIKE '%' || $3::text || '%'
+)
+ORDER BY p.published_at DESC
+LIMIT $5 OFFSET $4
+`
+
+type GetPostsForUserParams struct {
+	UserID       uuid.UUID
+	CategoryIds  string
+	Search       string
+	ResultOffset int32
+	ResultLimit  int32
+}
+
+type GetPostsForUserRow struct {
+	ID          uuid.UUID
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	Title       string
+	Description sql.NullString
+	PublishedAt time.Time
+	Url         string
+	FeedID      uuid.UUID
+	ImageUrl    sql.NullString
+	FeedName    string
+	FeedUrl     string
+}
+
+func (q *Queries) GetPostsForUser(ctx context.Context, arg GetPostsForUserParams) ([]GetPostsForUserRow, error) {
+	rows, err := q.db.QueryContext(ctx, getPostsForUser,
+		arg.UserID,
+		arg.CategoryIds,
+		arg.Search,
+		arg.ResultOffset,
+		arg.ResultLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetPostsForUserRow
+	for rows.Next() {
+		var i GetPostsForUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Title,
+			&i.Description,
+			&i.PublishedAt,
+			&i.Url,
+			&i.FeedID,
+			&i.ImageUrl,
+			&i.FeedName,
+			&i.FeedUrl,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const userHasFeedFollows = `-- name: UserHasFeedFollows :one
+SELECT EXISTS (
+    SELECT 1
+    FROM feed_follows
+    WHERE user_id = $1
+)
+`
+
+func (q *Queries) UserHasFeedFollows(ctx context.Context, userID uuid.UUID) (bool, error) {
+	row := q.db.QueryRowContext(ctx, userHasFeedFollows, userID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }

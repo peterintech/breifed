@@ -3,132 +3,79 @@ package scrapper
 import (
 	"context"
 	"database/sql"
-	"encoding/xml"
-	"fmt"
-	"io"
 	"log"
-	"net/http"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/peterintech/briefed/internal/database"
+	"github.com/peterintech/briefed/internal/feedparser"
 )
-
-type RSSFeed struct {
-	Channel struct {
-		Title       string    `xml:"title"`
-		Link        string    `xml:"link"`
-		Description string    `xml:"description"`
-		Language    string    `xml:"language"`
-		Item        []RSSItem `xml:"item"`
-	} `xml:"channel"`
-}
-
-type RSSItem struct {
-	Title       string `xml:"title"`
-	Link        string `xml:"link"`
-	Description string `xml:"description"`
-	PubDate     string `xml:"pubDate"`
-}
 
 func Start(db *database.Queries, concurrency int, timeBetweenRequest time.Duration) {
 	log.Printf("Collecting feeds every %s on %v goroutines...", timeBetweenRequest, concurrency)
 	ticker := time.NewTicker(timeBetweenRequest)
+	defer ticker.Stop()
 
 	for {
-		feeds, err := db.GetNextFeedsToFetch(context.Background(), int32(concurrency))
-		if err != nil {
-			log.Println("Couldn't get next feeds to fetch", err)
-			continue
-		}
-
-		wg := &sync.WaitGroup{}
-		for _, feed := range feeds {
-			wg.Go(func() {
-				scrapeFeed(db, feed)
-			})
-		}
-		wg.Wait()
-
+		scrapeBatch(db, concurrency)
 		<-ticker.C
 	}
 }
 
-func scrapeFeed(db *database.Queries, feed database.GetNextFeedsToFetchRow) {
-	_, err := db.MarkFeedAsFetched(context.Background(), feed.ID)
+func scrapeBatch(db *database.Queries, concurrency int) {
+	feeds, err := db.GetNextFeedsToFetch(context.Background(), int32(concurrency))
 	if err != nil {
+		log.Printf("Couldn't get next feeds to fetch: %v", err)
+		return
+	}
+
+	var waitGroup sync.WaitGroup
+	for _, feed := range feeds {
+		waitGroup.Add(1)
+		go func(feed database.Feed) {
+			defer waitGroup.Done()
+			scrapeFeed(db, feed)
+		}(feed)
+	}
+	waitGroup.Wait()
+}
+
+func scrapeFeed(db *database.Queries, feed database.Feed) {
+	parsedFeed, fetchErr := feedparser.Fetch(context.Background(), feed.Url)
+	if _, err := db.MarkFeedAsFetched(context.Background(), feed.ID); err != nil {
 		log.Printf("Couldn't mark feed %s fetched: %v", feed.Name, err)
+	}
+	if fetchErr != nil {
+		log.Printf("Couldn't collect feed %s: %v", feed.Name, fetchErr)
 		return
 	}
 
-	feedData, err := fetchFeed(feed.Url)
-	if err != nil {
-		log.Printf("Couldn't collect feed %s: %v", feed.Name, err)
-		return
-	}
+	saved := 0
+	for _, item := range parsedFeed.Items {
+		if item.Title == "" || item.URL == "" || item.PublishedAt.IsZero() {
+			continue
+		}
 
-	for _, item := range feedData.Channel.Item {
 		description := sql.NullString{}
-		if item.Description != "" {
-			description.String = item.Description
-			description.Valid = true
+		if strings.TrimSpace(item.Description) != "" {
+			description = sql.NullString{String: item.Description, Valid: true}
 		}
-		pubAt, err := time.Parse(time.RFC1123Z, item.PubDate)
-		if err != nil {
-			pubAt, err = time.Parse(time.RFC1123, item.PubDate)
-			if err != nil {
-				log.Printf("Couldn't parse date %s: %v", item.PubDate, err)
-				continue
-			}
+		imageURL := sql.NullString{}
+		if strings.TrimSpace(item.ImageURL) != "" {
+			imageURL = sql.NullString{String: item.ImageURL, Valid: true}
 		}
-
-		_, err = db.CreatePost(context.Background(), database.CreatePostParams{
-			ID:          uuid.New(),
-			CreatedAt:   time.Now().UTC(),
-			UpdatedAt:   time.Now().UTC(),
-			Title:       item.Title,
-			Description: description,
-			PublishedAt: pubAt,
-			Url:         item.Link,
-			FeedID:      feed.ID,
-		})
-		if err != nil {
-			if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
-				continue
-			}
+		now := time.Now().UTC()
+		if err := db.CreatePost(context.Background(), database.CreatePostParams{
+			ID: uuid.New(), CreatedAt: now, UpdatedAt: now, Title: item.Title,
+			Description: description, PublishedAt: item.PublishedAt, Url: item.URL,
+			FeedID: feed.ID, ImageUrl: imageURL,
+		}); err != nil {
 			log.Printf("Couldn't create post %s: %v", item.Title, err)
 			continue
 		}
+		saved++
 	}
-	log.Printf("Feed %s collected, %v posts found", feed.Name, len(feedData.Channel.Item))
-}
-
-func fetchFeed(feedURL string) (*RSSFeed, error) {
-	httpClient := http.Client{
-		Timeout: 10 * time.Second,
-	}
-	resp, err := httpClient.Get(feedURL)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("feed responded with status %d", resp.StatusCode)
-	}
-
-	defer resp.Body.Close()
-
-	dat, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var rssFeed RSSFeed
-	err = xml.Unmarshal(dat, &rssFeed)
-	if err != nil {
-		return nil, err
-	}
-
-	return &rssFeed, nil
+	log.Printf("Feed %s collected, %d posts processed", feed.Name, saved)
 }

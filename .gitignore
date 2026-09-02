@@ -2,5 +2,6 @@
 .vscode/
 .exe
 # the binary
+bin
 tmp
 /briefed

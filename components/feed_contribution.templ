@@ -1,0 +1,80 @@
+package components
+
+import webtypes "github.com/peterintech/briefed/types"
+
+templ FeedContributionDrawer(data webtypes.FeedContributionData) {
+	<div id="feed-contribution-overlay" data-drawer-overlay class="fixed inset-0 z-50">
+		<button type="button" data-action="close-drawer" aria-label="Close add feed" class="drawer-backdrop absolute inset-0 bg-ink/35" data-open="false"></button>
+		<aside class="drawer-panel absolute inset-y-0 right-0 flex w-full max-w-[27.5rem] flex-col border-l border-rule bg-paper-raised shadow-overlay" data-open="false" aria-labelledby="feed-contribution-title">
+			<header class="flex items-start justify-between gap-5 border-b border-rule px-6 py-6">
+				<div>
+					<p class="text-xs font-bold uppercase tracking-[0.1em] text-forest-800">Shared sources</p>
+					<h2 id="feed-contribution-title" class="mt-2 text-3xl font-bold tracking-[-0.04em] text-ink">Add an RSS feed</h2>
+					<p class="mt-2 text-sm leading-6 text-muted">Paste the direct RSS or Atom URL. Once validated, the source becomes available to every Briefed reader.</p>
+				</div>
+				<button type="button" data-action="close-drawer" aria-label="Close" class="grid size-10 shrink-0 place-items-center rounded-full text-muted hover:bg-paper hover:text-ink"><span aria-hidden="true" class="text-2xl">×</span></button>
+			</header>
+			<div id="feed-drawer-body" class="min-h-0 flex-1 overflow-y-auto">
+				@FeedContributionForm(data)
+			</div>
+		</aside>
+	</div>
+}
+
+templ FeedContributionForm(data webtypes.FeedContributionData) {
+	<form hx-post="/partials/feeds" hx-target="#feed-drawer-body" hx-swap="innerHTML" hx-disabled-elt="#feed-submit" class="flex min-h-full flex-col">
+		<div class="flex-1 px-6 py-6">
+			if data.Error != "" {
+				@InlineError(data.Error)
+			}
+			<label class="block">
+				<span class="mb-2 block text-sm font-semibold text-ink">Feed URL</span>
+				<input data-drawer-focus type="url" name="url" value={ data.URL } placeholder="https://publisher.com/feed.xml" autocomplete="url" required autofocus class="w-full rounded-control border border-rule bg-paper px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-forest-800"/>
+			</label>
+			<p class="mt-2 text-xs leading-5 text-muted">Use the feed URL itself, not the publisher's homepage.</p>
+			<fieldset class="mt-8">
+				<legend class="text-xs font-bold uppercase tracking-[0.09em] text-ink">Where does it belong?</legend>
+				<p class="mt-2 text-sm leading-6 text-muted">Choose every category that fits. At least one is required.</p>
+				<div class="mt-4 flex flex-wrap gap-2">
+					for _, category := range data.Categories {
+						<label class="feed-category-choice">
+							<input class="peer sr-only" type="checkbox" name="category_ids" value={ category.ID.String() } checked?={ selected(data.Selected, category.ID) }/>
+							<span class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-rule px-4 py-2 text-sm font-semibold text-ink hover:border-forest-700 peer-checked:border-forest-800 peer-checked:bg-forest-50 peer-checked:text-forest-900 peer-focus-visible:ring-2 peer-focus-visible:ring-forest-800">{ category.Name } <span class="choice-plus" aria-hidden="true">+</span><span class="choice-check" aria-hidden="true">✓</span></span>
+						</label>
+					}
+				</div>
+			</fieldset>
+			<div class="mt-8 border-t border-rule pt-5 text-xs leading-5 text-muted">
+				<p><span class="font-semibold text-ink">What happens next:</span> Briefed fetches the URL, confirms it is RSS or Atom, extracts its title, publishes it globally, and follows it for you.</p>
+			</div>
+		</div>
+		<footer class="flex items-center justify-end gap-3 border-t border-rule px-6 py-5">
+			<button type="button" data-action="close-drawer" class="rounded-control px-5 py-3 text-sm font-semibold text-muted hover:text-ink">Cancel</button>
+			<button id="feed-submit" type="submit" class="rounded-full bg-forest-900 px-6 py-3 w-fit text-sm font-semibold text-paper-raised hover:bg-forest-800 disabled:cursor-wait disabled:opacity-60">
+				<span class="htmx-indicator mr-2">Checking…</span><span class="[.htmx-request_&]:hidden">Add feed</span>
+			</button>
+		</footer>
+	</form>
+}
+
+templ FeedContributionSuccess(data webtypes.FeedContributionSuccess) {
+	<div class="flex min-h-full flex-col">
+		<div class="flex flex-1 flex-col justify-center px-6 py-10">
+			<div class="grid size-12 place-items-center rounded-full bg-forest-50 text-xl font-bold text-forest-900" aria-hidden="true">✓</div>
+			if data.Created {
+				<p class="mt-6 text-xs font-bold uppercase tracking-[0.09em] text-forest-800">Source published</p>
+				<h3 class="mt-2 text-2xl font-bold tracking-[-0.035em] text-ink">{ data.Name } is now on Briefed</h3>
+				<p class="mt-3 text-sm leading-6 text-muted">You are following it, and other readers can now discover it through the categories you selected. Articles will appear after the scraper's next fetch.</p>
+			} else {
+				<p class="mt-6 text-xs font-bold uppercase tracking-[0.09em] text-forest-800">Already on Briefed</p>
+				<h3 class="mt-2 text-2xl font-bold tracking-[-0.035em] text-ink">You now follow { data.Name }</h3>
+				<p class="mt-3 text-sm leading-6 text-muted">The source was already public, so we added it directly to your followed feeds.</p>
+			}
+			<a href={ templ.SafeURL(data.URL) } target="_blank" rel="noreferrer" class="mt-5 truncate text-sm font-medium text-forest-800 hover:underline">{ data.URL }</a>
+		</div>
+		<footer class="flex items-center justify-end gap-3 border-t border-rule px-6 py-5">
+			<button type="button" hx-get="/partials/feeds/new" hx-target="#overlay-root" hx-swap="innerHTML" class="rounded-control px-5 py-3 text-sm font-semibold text-muted hover:text-ink">Add another</button>
+			<button type="button" data-action="close-drawer" class="rounded-full bg-forest-900 px-6 py-3 text-sm font-semibold text-paper-raised hover:bg-forest-800">Done</button>
+		</footer>
+	</div>
+}

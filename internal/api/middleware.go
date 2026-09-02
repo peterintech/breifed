@@ -1,47 +1,25 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/peterintech/briefed/internal/database"
+	"github.com/peterintech/briefed/internal/sessionauth"
 )
 
 type authedHandler func(http.ResponseWriter, *http.Request, database.User)
 
-func GetApiKey(headers http.Header) (string, error) {
-	authHeader := headers.Get("Authorization")
-	if authHeader == "" {
-		return "", fmt.Errorf("Authorization header is missing")
-	}
-
-	// Split the header into two parts
-	parts := strings.Split(authHeader, " ")
-	if len(parts) != 2 {
-		return "", fmt.Errorf("Invalid Authorization header format")
-	}
-	if parts[0] != "ApiKey" {
-		return "", fmt.Errorf("Authorization header must start with 'ApiKey'")
-	}
-
-	return parts[1], nil
-}
-
 func (ac *apiConfig) authMiddleware(handler authedHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		apikey, err := GetApiKey(r.Header)
+		user, err := sessionauth.CurrentUser(r.Context(), ac.DB, r)
 		if err != nil {
-			errorResponse(w, 403, "Auth error: "+err.Error())
+			errorResponse(w, http.StatusInternalServerError, "could not verify session")
 			return
 		}
-
-		user, err := ac.DB.GetUserByApiKey(r.Context(), apikey)
-		if err != nil {
-			errorResponse(w, 403, "Auth error: "+err.Error())
+		if user == nil {
+			errorResponse(w, http.StatusUnauthorized, "authentication required")
 			return
 		}
-
-		handler(w, r, user)
+		handler(w, r, *user)
 	}
 }

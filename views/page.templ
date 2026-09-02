@@ -1,0 +1,29 @@
+package views
+
+import (
+	"strconv"
+
+	"github.com/peterintech/briefed/components"
+	webtypes "github.com/peterintech/briefed/types"
+)
+
+templ Page(title string, viewer *webtypes.Viewer) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<meta name="description" content="A calm, personalized reader for RSS and Atom news."/>
+			<title>{ title }</title>
+			<link rel="stylesheet" href="/public/styles.css"/>
+			<link rel="shortcut icon" href="/public/favicon.ico" type="image/x-icon"/>
+			<script src="/public/htmx.min.js" defer></script>
+			<script src="/public/app.js" defer></script>
+		</head>
+		<body data-authenticated={ strconv.FormatBool(viewer != nil) }>
+			@components.Header(viewer)
+			{ children... }
+			<div id="overlay-root"></div>
+		</body>
+	</html>
+}

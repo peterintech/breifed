@@ -2,18 +2,20 @@ package api
 
 import (
 	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
 )
 
 func (ac *apiConfig) NewRouter() *chi.Mux {
 	router := chi.NewRouter()
-
+	router.Use(middleware.Recoverer)
+	router.Use(middleware.RequestID)
+	router.Use(middleware.Logger)
 	router.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"https://*", "http://*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"*"},
-		ExposedHeaders:   []string{"Link"},
-		AllowCredentials: false,
+		AllowedHeaders:   []string{"Accept", "Content-Type"},
+		AllowCredentials: true,
 		MaxAge:           300,
 	}))
 
@@ -22,20 +24,22 @@ func (ac *apiConfig) NewRouter() *chi.Mux {
 
 	v1Router.Get("/health", readinessHandler)
 	v1Router.Get("/err", errorHandler)
+	v1Router.Post("/auth/register", ac.registerHandler)
+	v1Router.Post("/auth/login", ac.loginHandler)
+	v1Router.Post("/auth/logout", ac.logoutHandler)
 
-	v1Router.Post("/users", ac.createUserHandler)
-	v1Router.Get("/users", ac.authMiddleware(ac.getUserByApiKey))
-
+	v1Router.Get("/categories", ac.getCategoriesHandler)
+	v1Router.Get("/feeds", ac.getFeedsHandler)
+	v1Router.Get("/feeds/{feedID}", ac.getFeedByIDHandler)
 	v1Router.Post("/feeds", ac.authMiddleware(ac.createFeedHandler))
-	v1Router.Get("/feeds", ac.authMiddleware(ac.getFeedsHandler))
-	v1Router.Get("/feeds/{feedId}", ac.authMiddleware(ac.getFeedByIdHandler))
-	v1Router.Delete("/feeds/{feedId}", ac.authMiddleware(ac.deleteFeedHandler))
 
-	v1Router.Post("/feed_follows", ac.authMiddleware(ac.createFeedFollowHandler))
-	v1Router.Get("/feed_follows", ac.authMiddleware(ac.getFeedFollowsHandler))
-	v1Router.Delete("/feed_follows/{feedFollowID}", ac.authMiddleware(ac.deleteFeedFollowHandler))
-
-	v1Router.Get("/posts", ac.authMiddleware(ac.getPostsForUserHandler))
+	v1Router.Get("/me", ac.authMiddleware(ac.getMeHandler))
+	v1Router.Put("/me/categories", ac.authMiddleware(ac.replaceUserCategoriesHandler))
+	v1Router.Get("/me/feeds", ac.authMiddleware(ac.getFollowedFeedsHandler))
+	v1Router.Post("/me/feeds/{feedID}", ac.authMiddleware(ac.followFeedHandler))
+	v1Router.Delete("/me/feeds/{feedID}", ac.authMiddleware(ac.unfollowFeedHandler))
+	v1Router.Put("/me/preferences", ac.authMiddleware(ac.replacePreferencesHandler))
+	v1Router.Get("/posts", ac.getPostsHandler)
 
 	return router
 }

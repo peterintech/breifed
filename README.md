@@ -1,190 +1,103 @@
 # Briefed
 
-**Your personal RSS feed aggregator.** Subscribe to the blogs and news sources you care about, and read all their articles in one place.
+Briefed is a small RSS/Atom aggregator with a public editorial homepage and a personalized newest-first timeline for signed-in readers. Users choose interests, discover sources in those categories, and explicitly follow the feeds they want. Every feed is global: a source contributed by one user can be followed by everyone.
 
----
+## Stack
 
-## What is Briefed?
+- Go and Chi
+- PostgreSQL, goose, and sqlc
+- templ-rendered HTML and HTMX interactions
+- Tailwind CSS v4 compiled to a static stylesheet
+- Cookie sessions with bcrypt passwords
 
-Every day, interesting articles are published across hundreds of blogs and news sites. Instead of visiting each one individually, Briefed collects them for you automatically.
+The frontend follows a simple separation inspired by `fullstack-go-htmx`: full pages live in `views`, reusable fragments live in `components`, HTML handlers live in `handlers`, and static assets live in `public`. JSON endpoints remain in `internal/api`.
 
-**How it works:**
-1. You sign up and get a personal API key
-2. You tell Briefed which RSS feeds to follow
-3. Briefed checks those feeds every minute and saves new articles
-4. You ask Briefed for your articles and get everything in one response
+## Setup
 
-**Think of it as your own personal news desk** -- it reads the internet for you and hands you a summary whenever you ask.
+Requirements: Go 1.26+, PostgreSQL, goose, sqlc, Node.js, and Corepack.
 
----
+Create `.env`:
 
-## Quick Start
-
-### Prerequisites
-
-- Go 1.22 or later
-- PostgreSQL 12 or later
-- [goose](https://github.com/pressly/goose) for database migrations
-
-### 1. Clone and configure
-
-```bash
-git clone https://github.com/peterintech/briefed.git
-cd briefed
-```
-
-Create a `.env` file:
-
-```
+```env
 PORT=8080
 DB_URL=postgresql://username:password@localhost:5432/briefed?sslmode=disable
 ```
 
-### 2. Set up the database
+Then run:
 
 ```bash
-createdb briefed
-goose -dir sql/schema postgres "postgresql://username:password@localhost:5432/briefed?sslmode=disable" up
-```
-
-### 3. Run the server
-
-```bash
+goose -dir sql/schema postgres "$DB_URL" up
+sqlc generate
+corepack pnpm install
+corepack pnpm run build
+go tool templ generate
 go run .
 ```
 
-The server starts on `http://localhost:8080`.
-
----
-
-## API Usage
-
-### Create an account
+Seed the global catalog after migrations:
 
 ```bash
-curl -X POST http://localhost:8080/v1/users \
-  -H "Content-Type: application/json" \
-  -d '{"name": "your-name"}'
+psql "$DB_URL" -f sql/seeds/001_catalog.sql
 ```
 
-Response:
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "name": "your-name",
-  "api_key": "a1b2c3d4e5f6..."
-}
-```
+Do not pass Goose migration files directly to `psql`: they contain both Up and Down statements. Use Goose for `sql/schema` and `psql` only for the standalone seed.
 
-Save the `api_key` -- you'll need it for everything else.
+## Browser experience
 
-### Add an RSS feed
+- `/` renders public stories immediately. A valid session personalizes the same page; a signed-in user with no follows receives the global fallback.
+- Topic filters, debounced search, and load-more pagination update the timeline through HTMX.
+- Anonymous visitors can open the three-step interest → source → account modal. It also appears after 15 seconds or 30% scroll unless dismissed for the browser session.
+- Signed-in readers use the right-side preferences drawer. Save atomically replaces interests and followed sources; Cancel, Escape, the backdrop, or Close discards changes.
+- Signed-in readers can choose **Add feed** in the header or Sources rail. The drawer validates a direct RSS/Atom URL, extracts its title, publishes it globally, assigns categories, and follows it for the contributor. Existing feeds are followed without duplication.
+- `/login` renders the cookie-session login flow.
+
+Feed contribution HTML routes:
+
+- `GET /partials/feeds/new` renders the authenticated drawer.
+- `POST /partials/feeds` validates and creates/follows the source, returning inline error or success fragments.
+
+Build commands:
 
 ```bash
-curl -X POST http://localhost:8080/v1/feeds \
-  -H "Content-Type: application/json" \
-  -H "Authorization: ApiKey YOUR_API_KEY" \
-  -d '{"name": "Hacker News", "url": "https://hnrss.org/frontpage"}'
+make templ          # generate *_templ.go
+make tailwind       # watch Tailwind
+make test
+make build
 ```
 
-### See all available feeds
+## JSON API flow
 
-```bash
-curl http://localhost:8080/v1/feeds \
-  -H "Authorization: ApiKey YOUR_API_KEY"
-```
+1. `GET /v1/categories`
+2. `GET /v1/feeds?category_ids=...`
+3. `POST /v1/auth/register` with selected category/feed IDs
+4. Browser stores the HTTP-only `briefed_session` cookie
+5. `GET /v1/posts` returns global, personalized, or global-fallback results
+6. Follow existing feeds, update preferences, or contribute a shared RSS/Atom URL
 
-### Follow a feed
+`GET /v1/posts?category_ids=ID1,ID2&q=ai&limit=20&offset=0` is public. If a valid session cookie is present, personalization applies automatically. Its response includes `posts`, `mode`, `limit`, `offset`, and `has_more`; each post carries feed identity, categories, and an optional `image_url`.
 
-```bash
-curl -X POST http://localhost:8080/v1/feed_follows \
-  -H "Content-Type: application/json" \
-  -H "Authorization: ApiKey YOUR_API_KEY" \
-  -d '{"feed_id": "feed-uuid-here"}'
-```
+## Endpoints
 
-### Read your articles
+| Method | Path | Auth | Description |
+|---|---|---:|---|
+| GET | `/v1/health` | No | Health check |
+| GET | `/v1/categories` | No | List seeded categories |
+| GET | `/v1/feeds` | No | Search/filter shared feeds |
+| GET | `/v1/feeds/{feedID}` | No | Get a shared feed |
+| POST | `/v1/feeds` | Yes | Validate, publish, and follow a feed |
+| POST | `/v1/auth/register` | No | Register with onboarding choices |
+| POST | `/v1/auth/login` | No | Create a session |
+| POST | `/v1/auth/logout` | No | Delete the current session if present |
+| GET | `/v1/me` | Yes | Get profile, interests, and follows |
+| PUT | `/v1/me/preferences` | Yes | Atomically replace interests and follows |
+| PUT | `/v1/me/categories` | Yes | Replace interests |
+| GET | `/v1/me/feeds` | Yes | List followed feeds |
+| POST | `/v1/me/feeds/{feedID}` | Yes | Follow a feed |
+| DELETE | `/v1/me/feeds/{feedID}` | Yes | Unfollow a feed |
+| GET | `/v1/posts` | Optional | Public/personalized timeline |
 
-```bash
-curl http://localhost:8080/v1/posts \
-  -H "Authorization: ApiKey YOUR_API_KEY"
-```
+Import [docs/postman_collection.json](docs/postman_collection.json) directly into Postman. The complete contract is in [docs/openapi.json](docs/openapi.json).
 
-Response:
-```json
-[
-  {
-    "id": "...",
-    "title": "Show HN: A new way to do X",
-    "description": "I built a tool that...",
-    "url": "https://example.com/article",
-    "published_at": "2025-01-15T10:30:00Z",
-    "feed_id": "..."
-  }
-]
-```
+## Development notes
 
-### Other endpoints
-
-| Action | Method | Endpoint |
-|---|---|---|
-| Check server health | GET | `/v1/health` |
-| Get your profile | GET | `/v1/users` |
-| Get a specific feed | GET | `/v1/feeds/{feedId}` |
-| Delete a feed | DELETE | `/v1/feeds/{feedId}` |
-| List your followed feeds | GET | `/v1/feed_follows` |
-| Unfollow a feed | DELETE | `/v1/feed_follows/{feedFollowID}` |
-
----
-
-## How It Works (for developers)
-
-Briefed is a Go backend with three core components:
-
-### REST API
-A `chi`-based HTTP server with API key authentication. All authenticated endpoints use a middleware that extracts the API key from the `Authorization` header and resolves the user from the database.
-
-### Background Scraper
-A goroutine that runs on a 60-second ticker. It picks the 10 feeds that haven't been fetched most recently, fetches them concurrently (up to 10 goroutines), parses the RSS XML, and stores new articles. Duplicate articles are silently skipped via a unique constraint on the URL.
-
-### Database Layer
-Uses `sqlc` to generate type-safe Go code from raw SQL queries -- no ORM. The schema is managed through `goose` migrations. All relationships cascade on delete (deleting a user removes all their data).
-
-### Tech Stack
-
-| Component | Technology |
-|---|---|
-| Language | Go |
-| Router | chi |
-| Database | PostgreSQL |
-| Query generation | sqlc |
-| Migrations | goose |
-| DB driver | lib/pq |
-| Auth | API key (SHA-256) |
-
-For detailed architecture diagrams, see [architecture.md](architecture.md).
-
----
-
-## Project Structure
-
-```
-briefed/
-├── main.go                  # Entry point
-├── handler_*.go             # HTTP request handlers
-├── middleware_auth.go        # Authentication middleware
-├── scrapper.go              # Background RSS scraper
-├── models.go                # API response types
-├── internal/
-│   ├── auth/                # API key extraction
-│   └── database/            # sqlc-generated DB layer
-└── sql/
-    ├── schema/              # Database migrations
-    └── queries/             # SQL queries for sqlc
-```
-
----
-
-## License
-
-MIT
+Write schema changes under `sql/schema` and queries under `sql/queries`. Never manually edit `internal/database`; run `sqlc generate` after changing either SQL surface. Categories and starter feeds are seeded separately and there is no category administration UI in this version.
