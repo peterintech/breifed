@@ -6,7 +6,7 @@ import (
 )
 
 templ PreferencesDrawer(data webtypes.PreferencesData) {
-	<div id="preferences-overlay" class="fixed inset-0 z-50">
+	<div id="preferences-overlay" data-drawer-overlay class="fixed inset-0 z-50">
 		<button type="button" data-action="close-drawer" aria-label="Close preferences" class="drawer-backdrop absolute inset-0 bg-ink/35" data-open="false"></button>
 		<aside class="drawer-panel absolute inset-y-0 right-0 flex w-full max-w-[27.5rem] flex-col border-l border-rule bg-paper-raised shadow-overlay" data-open="false" aria-labelledby="preferences-title">
 			<header class="flex items-start justify-between gap-5 border-b border-rule px-6 py-6">

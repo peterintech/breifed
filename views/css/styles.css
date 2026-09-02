@@ -140,6 +140,18 @@
 		overflow: hidden;
 	}
 
+	.choice-check {
+		display: none;
+	}
+
+	.feed-category-choice input:checked + span .choice-plus {
+		display: none;
+	}
+
+	.feed-category-choice input:checked + span .choice-check {
+		display: inline;
+	}
+
 	@starting-style {
 		dialog.briefed-dialog[open] {
 			opacity: 0;

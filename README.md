@@ -48,7 +48,13 @@ Do not pass Goose migration files directly to `psql`: they contain both Up and D
 - Topic filters, debounced search, and load-more pagination update the timeline through HTMX.
 - Anonymous visitors can open the three-step interest → source → account modal. It also appears after 15 seconds or 30% scroll unless dismissed for the browser session.
 - Signed-in readers use the right-side preferences drawer. Save atomically replaces interests and followed sources; Cancel, Escape, the backdrop, or Close discards changes.
+- Signed-in readers can choose **Add feed** in the header or Sources rail. The drawer validates a direct RSS/Atom URL, extracts its title, publishes it globally, assigns categories, and follows it for the contributor. Existing feeds are followed without duplication.
 - `/login` renders the cookie-session login flow.
+
+Feed contribution HTML routes:
+
+- `GET /partials/feeds/new` renders the authenticated drawer.
+- `POST /partials/feeds` validates and creates/follows the source, returning inline error or success fragments.
 
 Build commands:
 

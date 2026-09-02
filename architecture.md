@@ -29,6 +29,7 @@ shared helpers ───────> sqlc queries ───────> Postgr
 - `internal/sessionauth`: random token generation, cookie handling, and optional user resolution.
 - `internal/timeline`: global/personalized selection and category hydration.
 - `internal/feedparser`: shared RSS/Atom fetch and parsing.
+- `internal/feedcatalog`: shared global feed contribution and automatic-follow transaction.
 - `internal/scrapper`: least-recently-fetched collection loop.
 - `internal/database`: sqlc-generated only; never manually edit.
 - `sql/schema`, `sql/queries`, `sql/seeds`: migrations, handwritten sqlc queries, and standalone catalog seed.
@@ -50,6 +51,8 @@ All modes apply the same optional category/search filters and `limit`/`offset` p
 `GET /` renders the shell, category navigation, and initial timeline. HTMX replaces only the timeline for search/category changes and appends story rows for load-more. URL filters remain shareable through `HX-Push-Url`.
 
 Anonymous onboarding uses a native `<dialog>` with three server-rendered steps. The final form calls the same registration transaction as `/v1/auth/register`. Authenticated personalization is a fixed overlay drawer; the page rails never move. The drawer's single save calls the same atomic preference operation as `/v1/me/preferences`.
+
+Feed contribution uses the same overlay-drawer vocabulary. `GET /partials/feeds/new` renders the form and `POST /partials/feeds` calls `internal/feedcatalog`. The shared package is also used by `POST /v1/feeds`, so HTML and JSON clients receive the same parsing, duplicate handling, transaction, and automatic-follow behavior.
 
 ## Transactions
 

@@ -3,6 +3,7 @@
 	const dismissedKey = "briefed:onboarding-dismissed";
 	let scrollListener;
 	let onboardingTimer;
+	let lastDrawerTrigger;
 
 	function modal() {
 		return document.getElementById(modalID);
@@ -41,18 +42,21 @@
 	}
 
 	function closeDrawer() {
-		const overlay = document.getElementById("preferences-overlay");
+		const overlay = document.querySelector("[data-drawer-overlay]");
 		if (!overlay) return;
 		const panel = overlay.querySelector(".drawer-panel");
 		const backdrop = overlay.querySelector(".drawer-backdrop");
 		panel?.setAttribute("data-open", "false");
 		backdrop?.setAttribute("data-open", "false");
 		document.body.classList.remove("overlay-open");
-		window.setTimeout(() => overlay.remove(), 250);
+		window.setTimeout(() => {
+			overlay.remove();
+			lastDrawerTrigger?.focus();
+		}, 250);
 	}
 
 	function activateDrawer(root = document) {
-		const overlay = root.querySelector?.("#preferences-overlay");
+		const overlay = root.querySelector?.("[data-drawer-overlay]");
 		if (!overlay) return;
 		document.body.classList.add("overlay-open");
 		window.requestAnimationFrame(() => {
@@ -63,6 +67,8 @@
 	}
 
 	document.addEventListener("click", (event) => {
+		const drawerTrigger = event.target.closest("[data-drawer-trigger]");
+		if (drawerTrigger) lastDrawerTrigger = drawerTrigger;
 		const target = event.target.closest("[data-action]");
 		if (!target) return;
 		switch (target.dataset.action) {
@@ -86,7 +92,7 @@
 	});
 
 	document.addEventListener("keydown", (event) => {
-		if (event.key === "Escape" && document.getElementById("preferences-overlay")) {
+		if (event.key === "Escape" && document.querySelector("[data-drawer-overlay]")) {
 			event.preventDefault();
 			closeDrawer();
 		}
@@ -98,6 +104,11 @@
 
 	document.body.addEventListener("preferencesSaved", () => {
 		closeDrawer();
+		const form = document.getElementById("timeline-filters");
+		if (form) htmx.trigger(form, "submit");
+	});
+
+	document.body.addEventListener("feedCreated", () => {
 		const form = document.getElementById("timeline-filters");
 		if (form) htmx.trigger(form, "submit");
 	});

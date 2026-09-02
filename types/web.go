@@ -32,6 +32,7 @@ type TimelineData struct {
 	Sources          []SourceOption
 	SelectedCategory string
 	Search           string
+	CanContribute    bool
 }
 
 type HomeData struct {
@@ -71,4 +72,17 @@ type PreferencesData struct {
 	Feeds               []FeedOption
 	SelectedCategoryIDs map[uuid.UUID]bool
 	Error               string
+}
+
+type FeedContributionData struct {
+	URL        string
+	Categories []database.Category
+	Selected   map[uuid.UUID]bool
+	Error      string
+}
+
+type FeedContributionSuccess struct {
+	Name    string
+	URL     string
+	Created bool
 }

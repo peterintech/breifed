@@ -41,6 +41,7 @@ func main() {
 	webHandler.RegisterRoutes(router)
 	webHandler.RegisterAuthRoutes(router)
 	webHandler.RegisterPreferenceRoutes(router)
+	webHandler.RegisterFeedContributionRoutes(router)
 
 	server := &http.Server{
 		Handler: router,

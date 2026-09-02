@@ -41,6 +41,19 @@ func (ac *apiConfig) followFeedHandler(w http.ResponseWriter, r *http.Request, u
 	ac.followAndRespond(w, r, user, feed, http.StatusOK)
 }
 
+func (ac *apiConfig) followAndRespond(w http.ResponseWriter, r *http.Request, user database.User, feed database.Feed, status int) {
+	if err := ac.DB.CreateFeedFollow(r.Context(), database.CreateFeedFollowParams{UserID: user.ID, FeedID: feed.ID}); err != nil {
+		errorResponse(w, http.StatusInternalServerError, "could not follow feed")
+		return
+	}
+	response, err := ac.feedResponse(r.Context(), feed)
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, "could not fetch feed")
+		return
+	}
+	jsonResponse(w, status, response)
+}
+
 func (ac *apiConfig) unfollowFeedHandler(w http.ResponseWriter, r *http.Request, user database.User) {
 	feedID, err := uuid.Parse(chi.URLParam(r, "feedID"))
 	if err != nil {

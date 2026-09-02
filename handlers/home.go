@@ -46,7 +46,7 @@ func (h *Handler) timelineData(r *http.Request) (*webtypes.Viewer, webtypes.Time
 			followed[feed.ID] = true
 		}
 	}
-	return viewer, webtypes.TimelineData{Result: result, Categories: categories, Sources: sourceOptions(result.Posts, followed), SelectedCategory: selectedCategory, Search: filters.Search}, nil
+	return viewer, webtypes.TimelineData{Result: result, Categories: categories, Sources: sourceOptions(result.Posts, followed), SelectedCategory: selectedCategory, Search: filters.Search, CanContribute: user != nil}, nil
 }
 
 func (h *Handler) home(w http.ResponseWriter, r *http.Request) {

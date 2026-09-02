@@ -183,8 +183,11 @@ templ LoadMore(result timeline.Result, categoryID, search string) {
 
 templ DiscoveryRail(data webtypes.TimelineData) {
 	<section>
-		<div class="flex items-center justify-between border-b border-rule pb-3">
+		<div class="flex items-center justify-between gap-3 border-b border-rule pb-3">
 			<h2 class="text-xs font-bold uppercase tracking-[0.09em] text-ink">Sources</h2>
+			if data.CanContribute {
+				<button type="button" data-drawer-trigger hx-get="/partials/feeds/new" hx-target="#overlay-root" hx-swap="innerHTML" class="text-xs font-semibold text-forest-800 hover:underline">+ Add feed</button>
+			}
 		</div>
 		<ul class="divide-y divide-rule">
 			for _, source := range data.Sources {
