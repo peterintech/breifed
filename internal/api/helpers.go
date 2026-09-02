@@ -2,40 +2,14 @@ package api
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/peterintech/briefed/internal/database"
 )
-
-func newSessionToken() (string, error) {
-	bytes := make([]byte, 32)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(bytes), nil
-}
-
-func setSessionCookie(w http.ResponseWriter, r *http.Request, token string, expiresAt time.Time) {
-	http.SetCookie(w, &http.Cookie{
-		Name: sessionCookieName, Value: token, Path: "/", Expires: expiresAt,
-		MaxAge: int(time.Until(expiresAt).Seconds()), HttpOnly: true,
-		Secure: r.TLS != nil, SameSite: http.SameSiteLaxMode,
-	})
-}
-
-func clearSessionCookie(w http.ResponseWriter, r *http.Request) {
-	http.SetCookie(w, &http.Cookie{
-		Name: sessionCookieName, Value: "", Path: "/", MaxAge: -1,
-		HttpOnly: true, Secure: r.TLS != nil, SameSite: http.SameSiteLaxMode,
-	})
-}
 
 func parsePagination(r *http.Request) (int32, int32, error) {
 	limit, offset := int64(20), int64(0)

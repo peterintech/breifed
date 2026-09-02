@@ -62,10 +62,15 @@ func scrapeFeed(db *database.Queries, feed database.Feed) {
 		if strings.TrimSpace(item.Description) != "" {
 			description = sql.NullString{String: item.Description, Valid: true}
 		}
+		imageURL := sql.NullString{}
+		if strings.TrimSpace(item.ImageURL) != "" {
+			imageURL = sql.NullString{String: item.ImageURL, Valid: true}
+		}
 		now := time.Now().UTC()
 		if err := db.CreatePost(context.Background(), database.CreatePostParams{
 			ID: uuid.New(), CreatedAt: now, UpdatedAt: now, Title: item.Title,
-			Description: description, PublishedAt: item.PublishedAt, Url: item.URL, FeedID: feed.ID,
+			Description: description, PublishedAt: item.PublishedAt, Url: item.URL,
+			FeedID: feed.ID, ImageUrl: imageURL,
 		}); err != nil {
 			log.Printf("Couldn't create post %s: %v", item.Title, err)
 			continue

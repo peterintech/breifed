@@ -48,6 +48,7 @@ type Post struct {
 	PublishedAt time.Time
 	Url         string
 	FeedID      uuid.UUID
+	ImageUrl    sql.NullString
 }
 
 type Session struct {

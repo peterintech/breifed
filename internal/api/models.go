@@ -33,17 +33,6 @@ type Feed struct {
 	Categories    []Category `json:"categories"`
 }
 
-type Post struct {
-	ID          uuid.UUID `json:"id"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-	Title       string    `json:"title"`
-	Description *string   `json:"description"`
-	PublishedAt time.Time `json:"published_at"`
-	URL         string    `json:"url"`
-	FeedID      uuid.UUID `json:"feed_id"`
-}
-
 type Profile struct {
 	User       User       `json:"user"`
 	Categories []Category `json:"categories"`
@@ -82,25 +71,4 @@ func databaseFeedToFeed(dbFeed database.Feed, dbCategories []database.Category) 
 		Name: dbFeed.Name, URL: dbFeed.Url, SubmittedBy: submittedBy,
 		LastFetchedAt: lastFetchedAt, Categories: databaseCategoriesToCategories(dbCategories),
 	}
-}
-
-func databasePostToPost(dbPost database.Post) Post {
-	var description *string
-	if dbPost.Description.Valid {
-		value := dbPost.Description.String
-		description = &value
-	}
-	return Post{
-		ID: dbPost.ID, CreatedAt: dbPost.CreatedAt, UpdatedAt: dbPost.UpdatedAt,
-		Title: dbPost.Title, Description: description, PublishedAt: dbPost.PublishedAt,
-		URL: dbPost.Url, FeedID: dbPost.FeedID,
-	}
-}
-
-func databasePostsToPosts(dbPosts []database.Post) []Post {
-	posts := make([]Post, 0, len(dbPosts))
-	for _, post := range dbPosts {
-		posts = append(posts, databasePostToPost(post))
-	}
-	return posts
 }

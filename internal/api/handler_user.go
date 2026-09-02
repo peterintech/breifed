@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -9,10 +10,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/peterintech/briefed/internal/database"
+	"github.com/peterintech/briefed/internal/sessionauth"
 	"golang.org/x/crypto/bcrypt"
 )
-
-const sessionDuration = 30 * 24 * time.Hour
 
 type authParameters struct {
 	Name        string      `json:"name"`
@@ -41,7 +41,7 @@ func (ac *apiConfig) registerHandler(w http.ResponseWriter, r *http.Request) {
 		errorResponse(w, http.StatusInternalServerError, "could not secure password")
 		return
 	}
-	token, err := newSessionToken()
+	token, err := sessionauth.NewToken()
 	if err != nil {
 		errorResponse(w, http.StatusInternalServerError, "could not create session")
 		return
@@ -86,7 +86,7 @@ func (ac *apiConfig) registerHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	expiresAt := now.Add(sessionDuration)
+	expiresAt := now.Add(sessionauth.Duration)
 	if _, err := queries.CreateSession(r.Context(), database.CreateSessionParams{
 		ID: uuid.New(), UserID: user.ID, Token: token, CreatedAt: now, ExpiresAt: expiresAt,
 	}); err != nil {
@@ -98,7 +98,7 @@ func (ac *apiConfig) registerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	setSessionCookie(w, r, token, expiresAt)
+	sessionauth.SetCookie(w, r, token, expiresAt)
 	jsonResponse(w, http.StatusCreated, databaseUserToUser(user))
 }
 
@@ -116,13 +116,13 @@ func (ac *apiConfig) loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := newSessionToken()
+	token, err := sessionauth.NewToken()
 	if err != nil {
 		errorResponse(w, http.StatusInternalServerError, "could not create session")
 		return
 	}
 	now := time.Now().UTC()
-	expiresAt := now.Add(sessionDuration)
+	expiresAt := now.Add(sessionauth.Duration)
 	if _, err := ac.DB.CreateSession(r.Context(), database.CreateSessionParams{
 		ID: uuid.New(), UserID: user.ID, Token: token, CreatedAt: now, ExpiresAt: expiresAt,
 	}); err != nil {
@@ -130,35 +130,41 @@ func (ac *apiConfig) loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	setSessionCookie(w, r, token, expiresAt)
+	sessionauth.SetCookie(w, r, token, expiresAt)
 	jsonResponse(w, http.StatusOK, databaseUserToUser(user))
 }
 
 func (ac *apiConfig) logoutHandler(w http.ResponseWriter, r *http.Request) {
-	if cookie, err := r.Cookie(sessionCookieName); err == nil && cookie.Value != "" {
+	if cookie, err := r.Cookie(sessionauth.CookieName); err == nil && cookie.Value != "" {
 		_ = ac.DB.DeleteSessionByToken(r.Context(), cookie.Value)
 	}
-	clearSessionCookie(w, r)
+	sessionauth.ClearCookie(w, r)
 	w.WriteHeader(http.StatusNoContent)
 }
 
 func (ac *apiConfig) getMeHandler(w http.ResponseWriter, r *http.Request, user database.User) {
-	categories, err := ac.DB.GetCategoriesForUser(r.Context(), user.ID)
+	profile, err := ac.profileResponse(r.Context(), user)
 	if err != nil {
-		errorResponse(w, http.StatusInternalServerError, "could not fetch interests")
+		errorResponse(w, http.StatusInternalServerError, "could not fetch profile")
 		return
 	}
-	feeds, err := ac.DB.GetFeedsForUser(r.Context(), user.ID)
+	jsonResponse(w, http.StatusOK, profile)
+}
+
+func (ac *apiConfig) profileResponse(ctx context.Context, user database.User) (Profile, error) {
+	categories, err := ac.DB.GetCategoriesForUser(ctx, user.ID)
 	if err != nil {
-		errorResponse(w, http.StatusInternalServerError, "could not fetch followed feeds")
-		return
+		return Profile{}, err
 	}
-	feedResponse, err := ac.feedResponses(r.Context(), feeds)
+	feeds, err := ac.DB.GetFeedsForUser(ctx, user.ID)
 	if err != nil {
-		errorResponse(w, http.StatusInternalServerError, "could not fetch feed categories")
-		return
+		return Profile{}, err
 	}
-	jsonResponse(w, http.StatusOK, Profile{
+	feedResponse, err := ac.feedResponses(ctx, feeds)
+	if err != nil {
+		return Profile{}, err
+	}
+	return Profile{
 		User: databaseUserToUser(user), Categories: databaseCategoriesToCategories(categories), Feeds: feedResponse,
-	})
+	}, nil
 }
