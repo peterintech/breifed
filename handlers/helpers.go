@@ -29,7 +29,7 @@ func parseFilters(r *http.Request) timeline.Filters {
 	if value, err := strconv.Atoi(r.URL.Query().Get("offset")); err == nil && value >= 0 {
 		offset = int32(value)
 	}
-	return timeline.Filters{CategoryIDs: strings.TrimSpace(r.URL.Query().Get("category_ids")), Search: strings.TrimSpace(r.URL.Query().Get("q")), Limit: limit, Offset: offset}
+	return timeline.Filters{Search: strings.TrimSpace(r.URL.Query().Get("q")), Limit: limit, Offset: offset}
 }
 
 func parseUUIDs(values []string) ([]uuid.UUID, error) {

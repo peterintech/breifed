@@ -21,12 +21,12 @@ templ TopicFilters(data webtypes.TimelineData) {
 				</a>
 				for _, category := range data.Categories {
 					<a
-						href={ templ.SafeURL(homeURL(category.ID.String(), data.Search)) }
-						hx-get={ templ.URL(partialPostsURL(category.ID.String(), "", 0)) }
+						href={ templ.SafeURL(homeURL(category.Slug, data.Search)) }
+						hx-get={ templ.URL(partialPostsURL(category.Slug, "", 0)) }
 						hx-include="#news-search"
 						hx-target="#timeline"
 						hx-swap="outerHTML"
-						class={ categoryClass(data.SelectedCategory == category.ID.String()) }
+						class={ categoryClass(data.SelectedCategory == category.Slug) }
 					>
 						{ category.Name }
 					</a>
@@ -40,7 +40,7 @@ templ TopicFilters(data webtypes.TimelineData) {
 				hx-trigger="input changed delay:350ms from:#news-search, submit"
 				class="flex items-center border-t border-rule py-3 lg:ml-auto lg:-mt-[3.65rem] lg:w-80 lg:border-t-0"
 			>
-				<input type="hidden" name="category_ids" value={ data.SelectedCategory }/>
+				<input type="hidden" name="category" value={ data.SelectedCategory }/>
 				<label for="news-search" class="sr-only">Search stories</label>
 				<input
 					id="news-search"
@@ -205,8 +205,8 @@ templ DiscoveryRail(data webtypes.TimelineData) {
 		<div class="flex flex-wrap gap-2 pt-4">
 			for _, category := range data.Categories {
 				<a
-					href={ templ.SafeURL(homeURL(category.ID.String(), "")) }
-					hx-get={ templ.URL(partialPostsURL(category.ID.String(), "", 0)) }
+					href={ templ.SafeURL(homeURL(category.Slug, "")) }
+					hx-get={ templ.URL(partialPostsURL(category.Slug, "", 0)) }
 					hx-target="#timeline"
 					hx-swap="outerHTML"
 					class="rounded-full border border-rule bg-paper-raised px-3 py-2 text-xs font-medium text-ink transition-colors hover:border-forest-700 hover:text-forest-800"

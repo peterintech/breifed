@@ -87,7 +87,7 @@ func TopicFilters(data webtypes.TimelineData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		for _, category := range data.Categories {
-			var templ_7745c5c3_Var6 = []any{categoryClass(data.SelectedCategory == category.ID.String())}
+			var templ_7745c5c3_Var6 = []any{categoryClass(data.SelectedCategory == category.Slug)}
 			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var6...)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -97,9 +97,9 @@ func TopicFilters(data webtypes.TimelineData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var7 templ.SafeURL
-			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(homeURL(category.ID.String(), data.Search)))
+			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(homeURL(category.Slug, data.Search)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/posts.templ`, Line: 24, Col: 70}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/posts.templ`, Line: 24, Col: 63}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -110,9 +110,9 @@ func TopicFilters(data webtypes.TimelineData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var8 string
-			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.URL(partialPostsURL(category.ID.String(), "", 0)))
+			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.URL(partialPostsURL(category.Slug, "", 0)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/posts.templ`, Line: 25, Col: 70}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/posts.templ`, Line: 25, Col: 63}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 			if templ_7745c5c3_Err != nil {
@@ -149,14 +149,14 @@ func TopicFilters(data webtypes.TimelineData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</div><form id=\"timeline-filters\" hx-get=\"/partials/posts\" hx-target=\"#timeline\" hx-swap=\"outerHTML\" hx-trigger=\"input changed delay:350ms from:#news-search, submit\" class=\"flex items-center border-t border-rule py-3 lg:ml-auto lg:-mt-[3.65rem] lg:w-80 lg:border-t-0\"><input type=\"hidden\" name=\"category_ids\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</div><form id=\"timeline-filters\" hx-get=\"/partials/posts\" hx-target=\"#timeline\" hx-swap=\"outerHTML\" hx-trigger=\"input changed delay:350ms from:#news-search, submit\" class=\"flex items-center border-t border-rule py-3 lg:ml-auto lg:-mt-[3.65rem] lg:w-80 lg:border-t-0\"><input type=\"hidden\" name=\"category\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue(data.SelectedCategory)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/posts.templ`, Line: 43, Col: 74}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/posts.templ`, Line: 43, Col: 70}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
 		if templ_7745c5c3_Err != nil {
@@ -782,9 +782,9 @@ func DiscoveryRail(data webtypes.TimelineData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var39 templ.SafeURL
-			templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(homeURL(category.ID.String(), "")))
+			templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(homeURL(category.Slug, "")))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/posts.templ`, Line: 208, Col: 60}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/posts.templ`, Line: 208, Col: 53}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
 			if templ_7745c5c3_Err != nil {
@@ -795,9 +795,9 @@ func DiscoveryRail(data webtypes.TimelineData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var40 string
-			templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.URL(partialPostsURL(category.ID.String(), "", 0)))
+			templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.URL(partialPostsURL(category.Slug, "", 0)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/posts.templ`, Line: 209, Col: 69}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/posts.templ`, Line: 209, Col: 62}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var40)
 			if templ_7745c5c3_Err != nil {

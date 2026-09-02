@@ -51,10 +51,10 @@ func choiceClass(selected bool) string {
 	return base + "border-rule bg-paper-raised text-ink hover:border-forest-700"
 }
 
-func partialPostsURL(categoryID, search string, offset int32) string {
+func partialPostsURL(categorySlug, search string, offset int32) string {
 	values := url.Values{}
-	if categoryID != "" {
-		values.Set("category_ids", categoryID)
+	if categorySlug != "" {
+		values.Set("category", categorySlug)
 	}
 	if search != "" {
 		values.Set("q", search)
@@ -68,10 +68,10 @@ func partialPostsURL(categoryID, search string, offset int32) string {
 	return "/partials/posts"
 }
 
-func homeURL(categoryID, search string) string {
+func homeURL(categorySlug, search string) string {
 	values := url.Values{}
-	if categoryID != "" {
-		values.Set("category_ids", categoryID)
+	if categorySlug != "" {
+		values.Set("category", categorySlug)
 	}
 	if search != "" {
 		values.Set("q", search)
