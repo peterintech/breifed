@@ -31,7 +31,7 @@ func Header(viewer *webtypes.Viewer) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<header class=\"border-b border-rule bg-paper\"><div class=\"mx-auto flex max-w-[96rem] items-center gap-5 px-5 py-5 lg:px-8\"><a href=\"/\" class=\"shrink-0 text-2xl font-bold tracking-[-0.04em] text-ink\">Briefed</a><div class=\"ml-auto flex items-center gap-3\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<header class=\"border-b border-rule bg-paper\"><div class=\"mx-auto flex max-w-[96rem] items-center gap-5 px-5 py-5 lg:px-8\"><a href=\"/\"><img src=\"public/logo.png\" alt=\"Briefed\" width=\"160px\" height=\"50px\"></a><div class=\"ml-auto flex items-center gap-3\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

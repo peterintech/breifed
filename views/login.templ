@@ -8,25 +8,38 @@ import (
 
 templ Login(data webtypes.LoginData) {
 	@Page("Log in · Briefed", nil) {
-		<main class="mx-auto grid min-h-[calc(100vh-5rem)] max-w-[96rem] items-center px-5 py-14 lg:grid-cols-2 lg:px-8">
-			<section class="hidden max-w-xl lg:block">
-				<p class="text-xs font-bold uppercase tracking-[0.1em] text-forest-800">Welcome back</p>
-				<h1 class="mt-4 text-6xl font-bold leading-[0.98] tracking-[-0.055em] text-ink">Your reading list, right where you left it.</h1>
-				<p class="mt-6 max-w-[48ch] text-base leading-7 text-muted">Sign in to see the newest stories from the sources you follow.</p>
+		<main class="mx-auto grid min-h-[calc(100vh-5rem)] max-w-[96rem] px-5 py-6 lg:grid-cols-[minmax(0,1.02fr)_minmax(28rem,0.98fr)] lg:px-8 lg:py-8">
+			<section class="relative hidden min-h-[42rem] overflow-hidden rounded-l-overlay bg-forest-900 lg:block">
+				<img src="/public/login.png" alt="login" class="absolute inset-0 h-full w-full object-cover"/>
+				<div class="absolute inset-0 bg-ink/40"></div>
+				<a href="/" class="absolute left-10 top-9 inline-flex items-center gap-3">
+					// <span class="flex size-9 items-center justify-center rounded-full border border-paper-raised/55 text-sm font-bold">B</span>
+					// <span class="text-lg font-bold tracking-[-0.035em]">briefed</span>
+					<div class="bg-paper-raised py-2 px-3 rounded-full"><img src="public/logo.png" alt="Briefed" width="100px" height="30px"/></div>
+				</a>
+				<div class="absolute inset-x-10 bottom-10 max-w-lg text-paper-raised xl:inset-x-12 xl:bottom-12">
+					<p class="text-xs font-bold uppercase tracking-[0.12em] text-paper-raised/75">Your daily reading, refined</p>
+					<h1 class="mt-4 text-5xl font-bold leading-[0.98] tracking-[-0.055em] xl:text-6xl">Pick up where your curiosity left off.</h1>
+					<p class="mt-5 max-w-[44ch] text-base leading-7 text-paper-raised/80">Return to the latest stories from the sources and subjects you chose.</p>
+				</div>
 			</section>
-			<section class="mx-auto w-full max-w-md rounded-overlay border border-rule bg-paper-raised p-7 shadow-overlay sm:p-9">
-				<h1 class="text-3xl font-bold tracking-[-0.04em] text-ink lg:hidden">Log in to Briefed</h1>
-				<form method="post" action="/auth/login" hx-post="/auth/login" hx-target="#login-error" hx-swap="innerHTML" class="mt-6 space-y-5 lg:mt-0">
-					<div id="login-error">
-						if data.Error != "" {
-							@components.InlineError(data.Error)
-						}
-					</div>
-					@components.TextField("email", "Email", "you@example.com", data.Email, "email", "email")
-					@components.TextField("password", "Password", "Your password", "", "password", "current-password")
-					<button type="submit" class="inline-flex w-full items-center justify-center rounded-full bg-forest-900 px-6 py-3.5 text-sm font-semibold text-paper-raised hover:bg-forest-800">Log in</button>
-				</form>
-				<p class="mt-6 text-center text-sm text-muted">New here? <a href="/" class="font-semibold text-forest-800 hover:underline">Personalize your feed</a></p>
+			<section class="flex min-h-[36rem] items-center rounded-overlay border border-rule bg-paper-raised px-6 py-12 shadow-overlay sm:px-10 lg:min-h-[42rem] lg:rounded-l-none lg:border-l-0 lg:px-14 lg:shadow-none xl:px-20">
+				<div class="mx-auto w-full max-w-md">
+					<p class="text-xs font-bold uppercase tracking-[0.1em] text-forest-800">Welcome back</p>
+					<h2 class="mt-3 text-4xl font-bold tracking-[-0.045em] text-ink">Log in to Briefed</h2>
+					<p class="mt-3 text-sm leading-6 text-muted">Enter your details to return to your personalized feed.</p>
+					<form method="post" action="/auth/login" hx-post="/auth/login" hx-target="#login-error" hx-swap="innerHTML" class="mt-8 space-y-5">
+						<div id="login-error">
+							if data.Error != "" {
+								@components.InlineError(data.Error)
+							}
+						</div>
+						@components.TextField("email", "Email", "you@example.com", data.Email, "email", "email")
+						@components.TextField("password", "Password", "Your password", "", "password", "current-password")
+						<button type="submit" class="inline-flex w-full items-center justify-center rounded-full bg-forest-900 px-6 py-3.5 text-sm font-semibold text-paper-raised transition-colors hover:bg-forest-800">Log in</button>
+					</form>
+					<p class="mt-7 text-center text-sm text-muted">New here? <a href="/" class="font-semibold text-forest-800 hover:underline">Personalize your feed</a></p>
+				</div>
 			</section>
 		</main>
 		@components.OnboardingModal(webtypes.InterestStepData{Categories: data.Categories, Selected: map[uuid.UUID]bool{}})
