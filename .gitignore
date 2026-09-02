@@ -4,3 +4,4 @@
 # the binary
 tmp
 /briefed
+node_modules/

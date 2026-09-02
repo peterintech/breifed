@@ -1,0 +1,15 @@
+package views
+
+import (
+	"github.com/peterintech/briefed/components"
+	webtypes "github.com/peterintech/briefed/types"
+)
+
+templ Home(data webtypes.HomeData) {
+	@Page("Briefed · Your daily reading", data.Viewer) {
+		<main>
+			@components.TopicFilters(data.Timeline)
+			@components.Timeline(data.Timeline)
+		</main>
+	}
+}

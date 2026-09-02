@@ -1,0 +1,174 @@
+@import "tailwindcss" source(none);
+@source "../../views";
+@source "../../components";
+
+@theme {
+	--font-sans: "Inter", "Aptos", "Segoe UI", system-ui, sans-serif;
+
+	--color-paper: oklch(0.982 0.007 86);
+	--color-paper-raised: oklch(0.994 0.004 86);
+	--color-ink: oklch(0.19 0.012 255);
+	--color-muted: oklch(0.53 0.014 255);
+	--color-rule: oklch(0.89 0.009 86);
+	--color-forest-50: oklch(0.96 0.018 152);
+	--color-forest-100: oklch(0.92 0.034 152);
+	--color-forest-700: oklch(0.39 0.083 152);
+	--color-forest-800: oklch(0.33 0.073 152);
+	--color-forest-900: oklch(0.27 0.061 152);
+	--color-danger: oklch(0.55 0.19 25);
+
+	--radius-control: 0.7rem;
+	--radius-image: 0.55rem;
+	--radius-overlay: 1rem;
+
+	--shadow-overlay: 0 1.5rem 4rem oklch(0.18 0.01 255 / 0.18);
+	--ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@layer base {
+	* {
+		border-color: var(--color-rule);
+	}
+
+	html {
+		background: var(--color-paper);
+		color: var(--color-ink);
+		font-family: var(--font-sans);
+	}
+
+	body {
+		min-height: 100vh;
+		background: var(--color-paper);
+		text-rendering: optimizeLegibility;
+	}
+
+	button,
+	input {
+		font: inherit;
+	}
+
+	button,
+	a,
+	input,
+	[role="button"] {
+		outline: none;
+	}
+
+	button:focus-visible,
+	a:focus-visible,
+	input:focus-visible,
+	[role="button"]:focus-visible {
+		box-shadow: 0 0 0 3px var(--color-forest-100), 0 0 0 5px var(--color-forest-800);
+	}
+
+	[hidden] {
+		display: none !important;
+	}
+}
+
+@layer components {
+	.htmx-indicator {
+		opacity: 0;
+		transition: opacity 160ms ease-out;
+	}
+
+	.htmx-request .htmx-indicator,
+	.htmx-request.htmx-indicator {
+		opacity: 1;
+	}
+
+	.news-rule {
+		border-color: var(--color-rule);
+	}
+
+	dialog.briefed-dialog {
+		width: min(42rem, calc(100vw - 2rem));
+		max-height: calc(100vh - 2rem);
+		margin: auto;
+		padding: 0;
+		border: 1px solid var(--color-rule);
+		border-radius: var(--radius-overlay);
+		background: var(--color-paper-raised);
+		color: var(--color-ink);
+		box-shadow: var(--shadow-overlay);
+		opacity: 0;
+		transform: translateY(1rem) scale(0.985);
+		transition:
+			opacity 180ms var(--ease-out-expo),
+			transform 220ms var(--ease-out-expo),
+			display 220ms allow-discrete,
+			overlay 220ms allow-discrete;
+	}
+
+	dialog.briefed-dialog[open] {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+
+	dialog.briefed-dialog::backdrop {
+		background: oklch(0.14 0.01 255 / 0.38);
+		opacity: 0;
+		transition:
+			opacity 180ms ease-out,
+			display 220ms allow-discrete,
+			overlay 220ms allow-discrete;
+	}
+
+	dialog.briefed-dialog[open]::backdrop {
+		opacity: 1;
+	}
+
+	.drawer-panel {
+		transform: translateX(100%);
+		transition: transform 240ms var(--ease-out-expo);
+	}
+
+	.drawer-panel[data-open="true"] {
+		transform: translateX(0);
+	}
+
+	.drawer-backdrop {
+		opacity: 0;
+		transition: opacity 180ms ease-out;
+	}
+
+	.drawer-backdrop[data-open="true"] {
+		opacity: 1;
+	}
+
+	body.overlay-open {
+		overflow: hidden;
+	}
+
+	@starting-style {
+		dialog.briefed-dialog[open] {
+			opacity: 0;
+			transform: translateY(1rem) scale(0.985);
+		}
+
+		dialog.briefed-dialog[open]::backdrop {
+			opacity: 0;
+		}
+	}
+}
+
+@media (max-width: 640px) {
+	dialog.briefed-dialog {
+		width: 100vw;
+		height: 100dvh;
+		max-height: 100dvh;
+		border: 0;
+		border-radius: 0;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		scroll-behavior: auto !important;
+		transition-duration: 0.01ms !important;
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+	}
+}

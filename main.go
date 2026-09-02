@@ -10,6 +10,7 @@ import (
 
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
+	webhandlers "github.com/peterintech/briefed/handlers"
 	"github.com/peterintech/briefed/internal/api"
 	"github.com/peterintech/briefed/internal/database"
 	"github.com/peterintech/briefed/internal/scrapper"
@@ -35,9 +36,11 @@ func main() {
 
 	db := database.New(conn)
 	apiConfig := api.New(db, conn)
+	router := apiConfig.NewRouter()
+	webhandlers.New(db, conn).RegisterRoutes(router)
 
 	server := &http.Server{
-		Handler: apiConfig.NewRouter(),
+		Handler: router,
 		Addr:    fmt.Sprintf(":%s", port),
 	}
 	const collectionConcurrency = 10
