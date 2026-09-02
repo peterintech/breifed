@@ -34,6 +34,7 @@ func (ac *apiConfig) NewRouter() *chi.Mux {
 	v1Router.Get("/me/feeds", ac.authMiddleware(ac.getFollowedFeedsHandler))
 	v1Router.Post("/me/feeds/{feedID}", ac.authMiddleware(ac.followFeedHandler))
 	v1Router.Delete("/me/feeds/{feedID}", ac.authMiddleware(ac.unfollowFeedHandler))
+	v1Router.Put("/me/preferences", ac.authMiddleware(ac.replacePreferencesHandler))
 	v1Router.Get("/posts", ac.getPostsHandler)
 
 	return router
