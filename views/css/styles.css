@@ -1,8 +1,6 @@
-@import "tailwindcss" source(none);
-@source "../../views";
-@source "../../components";
+@import "tailwindcss";
 
-@theme {
+@theme inline {
   --font-sans: "Inter", "Aptos", "Segoe UI", system-ui, sans-serif;
 
   --color-paper: oklch(0.982 0.007 86);
@@ -27,31 +25,18 @@
 
 @layer base {
   * {
-    border-color: var(--color-rule);
-  }
-
-  html {
-    background: var(--color-paper);
-    color: var(--color-ink);
-    font-family: var(--font-sans);
+    @apply border-rule;
   }
 
   body {
-    min-height: 100vh;
-    background: var(--color-paper);
-    text-rendering: optimizeLegibility;
-  }
-
-  button,
-  input {
-    font: inherit;
+    @apply bg-paper text-ink font-sans;
   }
 
   button,
   a,
   input,
   [role="button"] {
-    outline: none;
+    @apply outline-none;
   }
 
   button:focus-visible,
@@ -70,19 +55,16 @@
 
 @layer components {
   .htmx-indicator {
-    display: none;
-    opacity: 0;
-    transition: opacity 160ms ease-out;
+    @apply hidden opacity-0 transition-opacity duration-150 ease-out;
   }
 
   .htmx-request .htmx-indicator,
   .htmx-request.htmx-indicator {
-    display: inline-block;
-    opacity: 1;
+    @apply inline-block opacity-100;
   }
 
   .news-rule {
-    border-color: var(--color-rule);
+    @apply border-rule;
   }
 
   dialog.briefed-dialog {
@@ -141,19 +123,19 @@
   }
 
   body.overlay-open {
-    overflow: hidden;
+    @apply overflow-hidden;
   }
 
   .choice-check {
-    display: none;
+    @apply hidden;
   }
 
   .feed-category-choice input:checked + span .choice-plus {
-    display: none;
+    @apply hidden;
   }
 
   .feed-category-choice input:checked + span .choice-check {
-    display: inline;
+    @apply inline;
   }
 
   @starting-style {

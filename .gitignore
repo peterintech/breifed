@@ -2,6 +2,5 @@
 .vscode/
 .exe
 # the binary
-tmp
+bin
 /briefed
-node_modules/
