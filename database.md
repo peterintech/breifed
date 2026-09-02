@@ -69,6 +69,7 @@ Stores fetched articles:
 - title and nullable description
 - `published_at`
 - globally unique article `url`
+- nullable article preview `image_url`
 - `feed_id` referencing feeds with cascade deletion
 - creation and update timestamps
 
@@ -96,10 +97,12 @@ feeds 1---* posts
 
 - `GetFeeds` filters by an optional comma-separated category list, optional name search, limit, and offset.
 - `GetFeedsForUser` joins feeds through `feed_follows`.
-- `GetPostsForUser` joins posts through `feed_follows` and orders newest first.
+- `GetGlobalPosts` returns the public newest-first timeline.
+- `GetPostsForUser` joins posts through `feed_follows`; both timeline queries support category/search filters.
+- Timeline queries return feed identity, fetch `limit + 1`, and use `GetCategoriesForFeeds` to hydrate categories in one batch.
 - Follow and category inserts use `ON CONFLICT DO NOTHING`.
 - Post inserts use `ON CONFLICT (url) DO NOTHING`.
-- Registration and interest replacement combine generated queries inside SQL transactions.
+- Registration and preference replacement combine generated queries inside SQL transactions.
 
 ## Workflow
 

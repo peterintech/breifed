@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "9f8d6b52-e6cb-4b18-a833-8a5e52931854",
     "name": "Briefed API",
-    "description": "Postman collection for the Briefed personalized RSS/Atom aggregator. Register or log in first; Postman's cookie jar will retain the briefed_session cookie for authenticated requests.",
+    "description": "Postman collection for the Briefed public and personalized RSS/Atom aggregator. Public timeline requests work immediately; register or log in for personalization and Postman's cookie jar will retain the briefed_session cookie.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -346,6 +346,25 @@
           "response": []
         },
         {
+          "name": "Replace preferences atomically",
+          "request": {
+            "method": "PUT",
+            "header": [{"key":"Content-Type","value":"application/json","type":"text"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category_ids\": [\n    \"{{category_id}}\"\n  ],\n  \"feed_ids\": [\n    \"{{feed_id}}\"\n  ]\n}",
+              "options": {"raw":{"language":"json"}}
+            },
+            "url": {
+              "raw": "{{base_url}}/v1/me/preferences",
+              "host": ["{{base_url}}"],
+              "path": ["v1","me","preferences"]
+            },
+            "description": "Replaces interests and followed feeds in one transaction and returns the updated profile."
+          },
+          "response": []
+        },
+        {
           "name": "List followed feeds",
           "request": {
             "method": "GET",
@@ -413,12 +432,12 @@
       "name": "Posts",
       "item": [
         {
-          "name": "Personalized timeline",
+          "name": "Public or personalized timeline",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/v1/posts?limit=20&offset=0",
+              "raw": "{{base_url}}/v1/posts?category_ids={{category_ids}}&q=&limit=20&offset=0",
               "host": [
                 "{{base_url}}"
               ],
@@ -427,6 +446,18 @@
                 "posts"
               ],
               "query": [
+                {
+                  "key": "category_ids",
+                  "value": "{{category_ids}}",
+                  "description": "Comma-separated category UUIDs; matches any.",
+                  "disabled": true
+                },
+                {
+                  "key": "q",
+                  "value": "",
+                  "description": "Searches title, description, and feed name.",
+                  "disabled": true
+                },
                 {
                   "key": "limit",
                   "value": "20"
@@ -437,7 +468,7 @@
                 }
               ]
             },
-            "description": "Returns newest-first posts from followed feeds."
+            "description": "Returns an envelope with posts, mode, pagination, and has_more. Anonymous mode is global; a valid session yields personalized or global_fallback mode."
           },
           "response": []
         }
