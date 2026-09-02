@@ -40,6 +40,7 @@ func main() {
 	webHandler := webhandlers.New(db, conn)
 	webHandler.RegisterRoutes(router)
 	webHandler.RegisterAuthRoutes(router)
+	webHandler.RegisterPreferenceRoutes(router)
 
 	server := &http.Server{
 		Handler: router,
