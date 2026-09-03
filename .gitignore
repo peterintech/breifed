@@ -1,6 +1,7 @@
 .env
 .vscode/
 .exe
+design
 # the binary
 bin
 tmp

@@ -1,120 +1,76 @@
-# Briefed Database
+# Briefed Database Design
 
-Briefed uses PostgreSQL, goose migrations, and sqlc-generated Go code.
+Briefed uses PostgreSQL to enforce identity, relationship uniqueness, deletion behavior, and atomic user-visible operations. The model is deliberately relational: users follow feeds, feeds belong to categories, and posts come from feeds.
 
-The migrations describe a clean database and must be applied in filename order.
+For product and application architecture, see the [main README](README.md).
 
-## Tables
+## Tooling and workflow
 
-### `users`
+PostgreSQL fits this domain because its transactions, foreign keys, joins, constraints, indexes, and conflict handling express the rules directly. Most IDs are application-generated UUIDs; seeded categories use `gen_random_uuid()`. UUIDs allow independent creation without coordinating an integer sequence sequence and do not expose insertion volume through public identifiers. Their larger index footprint is acceptable at this scale.
 
-Stores account identity:
+- **goose** applies applies ordered migrations from `sql/schema`.
+- **sqlc** compiles handwritten queries from `sql/queries` into typed Go methods.
+- **PostgreSQL** executes SQL and remains the final constraint authority.
 
-- `id UUID` primary key
-- `name TEXT`
-- unique `email TEXT`
-- `password_hash TEXT`
-- creation and update timestamps
+```text
+sql/schema/*.sql  ──goose──> PostgreSQL schema
+sql/queries/*.sql ──sqlc───> internal/database/*.go
+```
 
-### `sessions`
+Run `sqlc generate` after SQL changes. Never manually edit `internal/database`.
 
-Stores login sessions:
+## Relational model
 
-- `id UUID` primary key
-- `user_id` referencing users with cascade deletion
-- unique session `token`
-- `created_at` and `expires_at`
+```text
+users 1───* sessions
+users *───* categories  through user_categories
+users *───* feeds       through feed_follows
+users 1───* feeds       through submitted_by attribution
+feeds *───* categories  through feed_categories
+feeds 1───* posts
+```
 
-### `categories`
+`submitted_by` answers who introduced a source; `feed_follows` answers who wants its posts. Combining them would turn contribution into ownership and break the shared catalog.
 
-Seeded interest categories:
+## Entity responsibilities
 
-- `id UUID` primary key
-- `name`
-- unique `slug`
-- `created_at`
+### `users` and `sessions`
 
-Categories are intentionally small and have no display ordering or administration fields.
+`users` stores UUID identity, display name, unique email, bcrypt password hash, and timestamps. The email constraint is the authoritative duplicate guard, including including under concurrent registrations.
 
-### `feeds`
+`sessions` stores a unique opaque token, user, and expiry. Authentication joins a non-expired session to its user instead of trusting client claims. `ON DELETE CASCADE` removes sessions with their account. A production hardening step would store token digests and periodically purge expired rows.
 
-The global RSS/Atom catalog:
+### `categories` and user interests
 
-- `id UUID` primary key
-- unique `url`
-- extracted `name`
-- nullable `submitted_by` referencing users with `ON DELETE SET NULL`
-- `last_fetched_at`
-- creation and update timestamps
+Categories are seeded discovery vocabulary with an ID, name, unique slug, and creation time. Slugs provide readable URL identity; UUIDs remain relational keys. Display-order and administration fields are absent because no current behavior needs them them.
 
-`submitted_by` records attribution, not ownership.
+`user_categories` has a composite `(user_id, category_id)` primary key. It records discovery preferences, not not subscriptions: interest in Technology should not automatically follow every Technology source.
 
-### `feed_categories`
+### `feeds`, classification, and follows
 
-Many-to-many relationship between feeds and categories with primary key `(feed_id, category_id)`.
+`feeds` stores one global source per unique URL. Names come from parsed feed data, `last_fetched_at` drives collection order, and nullable `submitted_by` records attribution.
 
-### `user_categories`
+`submitted_by ON DELETE SET NULL` preserves a source if its contributor leaves. `feed_categories` models many-to-many classification; `feed_follows` models explicit subscriptions. Their composite primary keys structurally prevent duplicates. `ON CONFLICT DO NOTHING` makes repeated classification and follow requests idempotent.
 
-Stores user interests with primary key `(user_id, category_id)`.
-
-### `feed_follows`
-
-Stores explicit subscriptions with primary key `(user_id, feed_id)` and a `created_at` timestamp.
+Foreign-key cascades remove relationship rows that have no meaning after either parent disappears. `feed_follows.created_at` records when the subscription began.
 
 ### `posts`
 
-Stores fetched articles:
+Posts store title, optional plain-text description, publication time, globally unique URL, optional image, source feed, and timestamps. Publication time is not unique because publishers can release articles simultaneously.
 
-- `id UUID` primary key
-- title and nullable description
-- `published_at`
-- globally unique article `url`
-- nullable article preview `image_url`
-- `feed_id` referencing feeds with cascade deletion
-- creation and update timestamps
+URL is the pragmatic duplicate key. `ON CONFLICT (url) DO NOTHING` makes refetching safe. If observed URL variants variants reveal duplicate variants tracked URLs, canonical URLs or publisher GUIDs would be the next refinement. `feed_id ON DELETE CASCADE` removes posts whose source is deliberately deleted.
 
-Publication timestamps are not unique. Duplicate article URLs are ignored by the insert query.
+## Constraints and deletion behavior
 
-## Relationships
+| Rule                                 | Database mechanism mechanism      |
+| ------------------------------------ | --------------------------------- |
+| One account per email                | `users.email UNIQUE`              |
+| One session per opaque token         | `sessions.token UNIQUE`           |
+| Stable category identity             | `categories.slug UNIQUE`          |
+| One global source per URL            | `feeds.url UNIQUE`                |
+| No repeated article                  | `posts.url UNIQUE`                |
+| No repeated relationship             | Composite primary keys            |
+| Remove meaningless dependents        | `ON DELETE CASCADE`               |
+| Keep feed after contributor deletion | `submitted_by ON DELETE SET NULL` |
 
-```text
-users 1---* sessions
-users *---* categories  through user_categories
-users *---* feeds       through feed_follows
-users 1---* feeds       through nullable submitted_by attribution
-feeds *---* categories  through feed_categories
-feeds 1---* posts
-```
-
-## Indexes
-
-- `feeds(last_fetched_at ASC NULLS FIRST)` for scraper selection.
-- `feed_categories(category_id, feed_id)` for category discovery.
-- `posts(feed_id, published_at DESC)` for feed timelines.
-- The `feed_follows` primary key begins with `user_id` and supports followed-feed lookup.
-
-## Query behavior
-
-- `GetFeeds` filters by an optional comma-separated category list, optional name search, limit, and offset.
-- `GetFeedsForUser` joins feeds through `feed_follows`.
-- `GetGlobalPosts` returns the public newest-first timeline.
-- `GetPostsForUser` joins posts through `feed_follows`; both timeline queries support category/search filters.
-- Timeline queries return feed identity, fetch `limit + 1`, and use `GetCategoriesForFeeds` to hydrate categories in one batch.
-- Follow and category inserts use `ON CONFLICT DO NOTHING`.
-- Post inserts use `ON CONFLICT (url) DO NOTHING`.
-- Registration and preference replacement combine generated queries inside SQL transactions.
-
-## Workflow
-
-Edit only:
-
-- `sql/schema/*.sql` for schema changes.
-- `sql/queries/*.sql` for query changes.
-
-Then run:
-
-```bash
-sqlc generate
-```
-
-Files under `internal/database` are generated and should never be manually edited.
+Application checks improve errors; constraints remain authoritative when concurrent requests pass application validation together.
